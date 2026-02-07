@@ -1,0 +1,377 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql" 
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  ADMIN
+  RECRUITER
+  MEMBER
+}
+
+enum ExperienceLevel {
+  INTERN
+  ENTRY
+  MID
+  SENIOR
+  STAFF
+  PRINCIPAL
+  EXECUTIVE
+}
+
+enum ReferralStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  INTERVIEWING
+  OFFERED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum RelationType {
+  FRIEND
+  EX_COLLEAGUE
+  RELATIVE
+  CLASSMATE
+  MENTOR
+  MENTEE
+  OTHER
+}
+
+enum EventType {
+  JOB_VIEWED
+  NUDGES_SHOWN
+  MESSAGE_COPIED
+  REFERRAL_STARTED
+  REFERRAL_SUBMITTED
+  REFERRAL_STATUS_CHANGED
+  PROFILE_UPDATED
+  JOB_CREATED
+  JOB_CLOSED
+  JOB_CLOSING_REMINDER
+  LOGIN
+  SIGNUP
+  LOGOUT
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+/// User model - core authentication and identity
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  password      String          // Hashed password (salt:hash format)
+  name          String
+  role          Role            @default(MEMBER)
+  isActive      Boolean         @default(true)
+  lastLoginAt   DateTime?       // Track last login for analytics
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  memberProfile MemberProfile?
+  referrals     Referral[]      @relation("ReferrerReferrals")
+  events        Event[]
+  createdJobs   Job[]           @relation("CreatedJobs")
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+/// MemberProfile - stores ONLY the member's own professional data
+/// NO contact storage, NO social graph, NO inferred relationships
+model MemberProfile {
+  id                String          @id @default(cuid())
+  userId            String          @unique
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Professional info - ONLY the member's own data
+  skills            String[]        @default([])
+  pastCompanies     String[]        @default([])
+  domains           String[]        @default([])
+  experienceLevel   ExperienceLevel @default(MID)
+  yearsOfExperience Int             @default(0)
+  currentCompany    String?
+  currentTitle      String?
+  location          String?
+
+  // Preferences for referral matching
+  preferredDomains  String[]        @default([])
+  preferredRoles    String[]        @default([])
+  isOpenToRefer     Boolean         @default(true)
+
+  // Preferences JSON for extensibility
+  preferences       Json            @default("{}")
+
+  // Profile completeness tracking
+  profileCompleteness Int           @default(0) // 0-100 percentage
+  lastRefreshedAt   DateTime?       // For cron job refresh tracking
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([experienceLevel])
+  @@index([isOpenToRefer])
+  @@index([updatedAt])
+  @@index([skills])
+  @@index([domains])
+}
+
+/// Job model - job listings with parsed tags
+model Job {
+  id              String          @id @default(cuid())
+  title           String
+  company         String
+  description     String          @db.Text
+  domain          String          @default("general") // Primary domain for matching
+  location        String?
+  isRemote        Boolean         @default(false)
+  salaryMin       Int?
+  salaryMax       Int?
+  salaryCurrency  String          @default("USD")
+  experienceLevel ExperienceLevel @default(MID)
+  isActive        Boolean         @default(true)
+  closingDate     DateTime?
+  viewCount       Int             @default(0) // Track job views
+  referralCount   Int             @default(0) // Track referrals made
+
+  // Creator relation
+  createdById     String
+  createdBy       User            @relation("CreatedJobs", fields: [createdById], references: [id])
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  jobTag          JobTag?
+  referrals       Referral[]
+  events          Event[]         @relation("JobEvents")
+
+  @@index([isActive])
+  @@index([company])
+  @@index([domain])
+  @@index([closingDate])
+  @@index([experienceLevel])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+/// JobTag model - parsed/extracted data from job descriptions
+/// Supports both rule-based parsing and optional GenAI enhancement
+model JobTag {
+  id               String          @id @default(cuid())
+  jobId            String          @unique
+  job              Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Parsed/extracted data from job description
+  skills           String[]        @default([])
+  domains          String[]        @default([])
+  keywords         String[]        @default([])
+  experienceLevel  ExperienceLevel @default(MID)
+  seniorityTerms   String[]        @default([])
+  techStack        String[]        @default([])
+  benefits         String[]        @default([])
+  softSkills       String[]        @default([])
+  certifications   String[]        @default([])
+  educationLevel   String?         // e.g., "Bachelor's", "Master's"
+
+  // Matching weights for nudge engine
+  skillWeight      Float           @default(1.0)
+  domainWeight     Float           @default(1.0)
+  experienceWeight Float           @default(1.0)
+
+  // Metadata for parsing
+  parserVersion    String          @default("v1")
+  parsedAt         DateTime        @default(now())
+  isManuallyEdited Boolean         @default(false)
+  aiEnhanced       Boolean         @default(false) // Flag if GenAI was used
+  parsingConfidence Float          @default(1.0)   // 0.0 - 1.0 confidence score
+
+  // Raw AI response storage (for debugging/auditing)
+  aiRawResponse    Json?
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([skills])
+  @@index([domains])
+  @@index([experienceLevel])
+}
+
+/// Referral model - tracks referrals made by members
+/// Composite unique index prevents duplicate referrals
+model Referral {
+  id                String          @id @default(cuid())
+  jobId             String
+  job               Job             @relation(fields: [jobId], references: [id])
+  referrerId        String
+  referrer          User            @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+
+  // Candidate info (entered by referrer)
+  candidateName     String
+  candidateEmail    String
+  candidatePhone    String?
+  candidateLinkedIn String?
+  candidateResume   String?         // URL to uploaded resume
+
+  // Relationship context - for explainable nudges
+  relationType      RelationType
+  relationshipNote  String?         @db.Text
+  howLongKnown      String?         // e.g., "2 years", "5+ years"
+  workedTogether    Boolean         @default(false)
+  workedTogetherAt  String?         // Company name where they worked together
+
+  // Referral details
+  referralNote      String?         @db.Text
+  whyGoodFit        String?         @db.Text
+  nudgeUsed         String?         // Which nudge prompted this referral
+
+  // Status tracking
+  status            ReferralStatus  @default(DRAFT)
+  statusHistory     Json            @default("[]") // Array of status changes
+  submittedAt       DateTime?
+  lastStatusChange  DateTime?
+  reviewedBy        String?         // User ID of reviewer
+  reviewNotes       String?         @db.Text
+
+  // Outcome tracking
+  hiredAt           DateTime?
+  rejectedAt        DateTime?
+  rejectionReason   String?
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Prevent duplicate referrals for same job + candidate email
+  @@unique([jobId, candidateEmail])
+  @@index([referrerId])
+  @@index([status])
+  @@index([jobId])
+  @@index([createdAt])
+  @@index([submittedAt])
+}
+
+/// Event model - analytics and activity tracking
+/// Supports all required event types for analytics
+model Event {
+  id          String      @id @default(cuid())
+  type        EventType
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+
+  // Flexible metadata storage
+  metadata    Json        @default("{}")
+
+  // Common references (nullable for flexibility)
+  jobId       String?
+  job         Job?        @relation("JobEvents", fields: [jobId], references: [id])
+  referralId  String?
+
+  // Session tracking
+  sessionId   String?     // For grouping events in a session
+  ipHash      String?     // Hashed IP for fraud detection (privacy-safe)
+  userAgent   String?     // Browser/device info
+
+  createdAt   DateTime    @default(now())
+
+  @@index([type])
+  @@index([userId])
+  @@index([jobId])
+  @@index([referralId])
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([type, createdAt])
+  @@index([userId, type])
+  @@index([jobId, type])
+}
+
+/// NudgeTemplate model - stores configurable nudge templates
+/// Allows human-editing and versioning of nudge messages
+model NudgeTemplate {
+  id              String    @id @default(cuid())
+  name            String    @unique // e.g., "skill_match", "company_match"
+  category        String    // e.g., "professional", "personal", "educational"
+  template        String    @db.Text // Template with placeholders: "People you've worked with on {{skills}}"
+  description     String?   @db.Text
+  isActive        Boolean   @default(true)
+  priority        Int       @default(0) // Higher priority = shown first
+
+  // Matching criteria
+  matchField      String    // e.g., "skills", "pastCompanies", "domains"
+  minMatchCount   Int       @default(1) // Minimum matches required
+
+  // Metadata
+  version         Int       @default(1)
+  createdBy       String?
+  lastEditedBy    String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([category])
+  @@index([priority])
+}
+
+/// MessageTemplate model - stores message copy variations
+/// For GenAI-assisted message generation with human editing
+model MessageTemplate {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  type            String    // e.g., "referral_request", "follow_up", "introduction"
+  subject         String?   // For email templates
+  body            String    @db.Text
+  isActive        Boolean   @default(true)
+  isAiGenerated   Boolean   @default(false)
+
+  // Placeholders documentation
+  placeholders    String[]  @default([]) // e.g., ["{{candidate_name}}", "{{job_title}}"]
+
+  // A/B testing support
+  variantOf       String?   // ID of the original template
+  variantName     String?   // e.g., "A", "B", "casual", "formal"
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+}
+
+/// CronJobLog model - tracks cron job executions
+/// For monitoring and debugging automated tasks
+model CronJobLog {
+  id              String    @id @default(cuid())
+  jobName         String    // e.g., "refresh-member-profiles", "job-closing-reminders"
+  status          String    // "started", "completed", "failed"
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  duration        Int?      // Duration in milliseconds
+  recordsProcessed Int      @default(0)
+  errorMessage    String?   @db.Text
+  metadata        Json      @default("{}")
+
+  @@index([jobName])
+  @@index([status])
+  @@index([startedAt])
+}
