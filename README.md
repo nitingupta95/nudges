@@ -89,18 +89,48 @@
     ```
     Access the app at `http://localhost:3000`.
 
-## 🚢 Deployment
+## 🚢 Deployment (Vercel)
 
-### Vercel (Recommended)
+This project is optimized for [Vercel](https://vercel.com), the creators of Next.js.
 
-This project is optimized for deployment on [Vercel](https://vercel.com).
-1.  Connect your GitHub repository to Vercel.
-2.  Configure the build settings (Framework Preset: Next.js).
-3.  Add the environment variables from your `.env.local` file.
-4.  Deploy.
+### 1. Database Setup (Crucial Step)
+Since Vercel is serverless, you need a cloud-hosted PostgreSQL database.
+- **Recommended**: [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres), [Neon](https://neon.tech/), or [Supabase](https://supabase.com/).
+- **Connection String**: Get your `DATABASE_URL` (ensure it's the transaction pooling URL if using Supabase/Neon in serverless environments).
 
-### Docker
-(Coming Soon)
+### 2. Project Configuration
+This project includes a `postinstall` script in `package.json` to automatically generate the Prisma Client during the build process:
+```json
+"postinstall": "prisma generate"
+```
+
+### 3. Deploy to Vercel
+1.  **Push to GitHub**: Ensure your code is pushed to a GitHub repository.
+2.  **Import in Vercel**:
+    - Go to your Vercel Dashboard.
+    - Click **"Add New..."** -> **"Project"**.
+    - Import your GitHub repository.
+3.  **Configure Environment Variables**:
+    - Expand the **"Environment Variables"** section.
+    - Add the following:
+      - `DATABASE_URL`: Your cloud database connection string.
+      - `OPENAI_API_KEY`: Your OpenAI API key.
+      - `NEXTAUTH_SECRET`: A random string for auth encryption.
+      - `NEXT_PUBLIC_APP_URL`: Your production URL options (e.g. `https://your-project.vercel.app`).
+4.  **Deploy**: Click **"Deploy"**.
+
+### 4. Run Migrations (Post-Deploy)
+After the deployment is "Ready", you need to push your database schema to the production database.
+- **Option A (Vercel Console)**:
+  - Go to the **Storage** tab in your Vercel project (if using Vercel Postgres).
+  - Or use the **Vercel CLI**: `vercel env pull .env.production` then `npx prisma migrate deploy`.
+- **Option B (Local CLI)**:
+  - Create a temporary `.env.production` file with your production `DATABASE_URL`.
+  - Run:
+    ```bash
+    DATABASE_URL="your-prod-url" npx prisma migrate deploy
+    ```
+  *Note: `migrate deploy` is safer for production than `migrate dev`.*
 
 ## 🧪 Testing
 
