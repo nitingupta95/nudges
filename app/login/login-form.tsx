@@ -45,7 +45,7 @@ export function LoginForm() {
     };
 
     return (
-        <motion.div initial="hidden" animate="visible" className="relative z-10 w-full max-w-md">
+        <motion.div initial="hidden" animate="visible" className="relative z-10 w-full max-w-md border-border/50 border-2 rounded-xl">
             <motion.div custom={0} variants={fadeUp} className="glass-card rounded-2xl p-8 space-y-6">
                 <motion.div custom={1} variants={fadeUp} className="text-center space-y-3">
                     <Link href="/" className="inline-flex items-center gap-2.5 text-xl font-bold text-foreground">
