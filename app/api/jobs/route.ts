@@ -17,9 +17,9 @@ export async function GET(req: Request) {
       offset: parseInt(searchParams.get("offset") || "0"),
     };
 
-    const jobs = await listJobs(filters);
+    const result = await listJobs(filters);
 
-    return NextResponse.json({ jobs });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error listing jobs:", error);
     return NextResponse.json(

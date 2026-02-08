@@ -19,6 +19,16 @@ export async function GET(
 
     return NextResponse.json(result);
   } catch (error) {
+    // Handle expected errors (like Job not found for mock IDs) gracefully
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    if (errorMessage.toLowerCase().includes("not found")) {
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: 404 }
+      );
+    }
+
     console.error("Error fetching referral nudges:", error);
 
     // Handle authentication errors

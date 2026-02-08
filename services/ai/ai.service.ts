@@ -18,6 +18,14 @@ export interface JobSummary {
     generatedAt: string;
 }
 
+export interface ContactInsights {
+    roles: string[];
+    departments: string[];
+    description: string;
+    source: "ai" | "static";
+    generatedAt: string;
+}
+
 /**
  * Generate AI-powered job description summary
  * Returns 3 bullet points highlighting key aspects
@@ -175,4 +183,132 @@ export async function batchSummarizeJobs(
     }
 
     return summaries;
+}
+/**
+ * Extract contact insights from job description
+ * Identifies key roles and departments to reach out to
+ */
+export async function extractContactInsights(
+    jobTitle: string,
+    jobDescription: string,
+    company?: string
+): Promise<ContactInsights> {
+    if (!openai) {
+        console.warn("OpenAI API key not configured, using static parsing");
+        return generateStaticContactInsights(jobTitle, jobDescription, company);
+    }
+
+    try {
+        const prompt = `You are an expert recruiter. Given a job posting, identify key people to reach out to for a referral.
+
+Job Title: ${jobTitle}
+Company: ${company || "Unknown"}
+Job Description: ${jobDescription}
+
+Analyze the job and provide:
+1. A list of 2-3 key roles/titles of people you should reach out to (e.g., "Hiring Manager", "Team Lead", "Engineering Manager")
+2. A list of 2-3 relevant departments they likely belong to (e.g., "Engineering", "Product", "HR")
+3. A brief 1-sentence explanation of the best approach to reach out
+
+Format your response EXACTLY as JSON (no markdown, no code blocks):
+{
+  "roles": ["role1", "role2", "role3"],
+  "departments": ["dept1", "dept2", "dept3"],
+  "description": "Brief explanation about reaching out"
+}`;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content:
+                        "You are a recruiting expert. Always respond with valid JSON only, no markdown or extra text.",
+                },
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+            temperature: 0.3,
+            max_tokens: 300,
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+            throw new Error("No content returned from OpenAI");
+        }
+
+        // Parse JSON response
+        const parsed = JSON.parse(content);
+
+        return {
+            roles: (parsed.roles || []).slice(0, 3),
+            departments: (parsed.departments || []).slice(0, 3),
+            description: parsed.description || "Reach out to the hiring manager or team lead.",
+            source: "ai",
+            generatedAt: new Date().toISOString(),
+        };
+    } catch (error) {
+        console.error("Error extracting contact insights:", error);
+        return generateStaticContactInsights(jobTitle, jobDescription, company);
+    }
+}
+
+/**
+ * Static fallback for contact insights
+ */
+function generateStaticContactInsights(
+    jobTitle: string,
+    jobDescription: string,
+    company?: string
+): ContactInsights {
+    // Determine roles based on job title and description
+    const roles: string[] = [];
+    const departments: string[] = [];
+
+    // Common hiring roles
+    if (
+        jobTitle.toLowerCase().includes("manager") ||
+        jobTitle.toLowerCase().includes("lead")
+    ) {
+        roles.push("Engineering Manager");
+        roles.push("Director of Engineering");
+    } else if (jobTitle.toLowerCase().includes("designer")) {
+        roles.push("Design Lead");
+        roles.push("Product Manager");
+    } else if (jobTitle.toLowerCase().includes("product")) {
+        roles.push("Product Manager");
+        roles.push("Head of Product");
+    } else {
+        roles.push("Hiring Manager");
+        roles.push("Team Lead");
+    }
+
+    // Determine departments
+    if (
+        jobDescription.toLowerCase().includes("engineer") ||
+        jobDescription.toLowerCase().includes("developer")
+    ) {
+        departments.push("Engineering");
+    }
+    if (jobDescription.toLowerCase().includes("product")) {
+        departments.push("Product");
+    }
+    if (jobDescription.toLowerCase().includes("design")) {
+        departments.push("Design");
+    }
+    if (departments.length === 0) {
+        departments.push("Hiring Team");
+    }
+
+    departments.push("HR/People Ops");
+
+    return {
+        roles: roles.slice(0, 3),
+        departments: departments.slice(0, 3),
+        description: `Reach out to the ${roles[0]} or ${roles[1] || "team lead"} at ${company || "the company"} to discuss this opportunity.`,
+        source: "static",
+        generatedAt: new Date().toISOString(),
+    };
 }

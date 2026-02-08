@@ -22,6 +22,7 @@ import { PageLayout } from "@/components/layout/page-layout";
 import { ReferralNudgePanel } from "@/components/referrals/referral-nudges";
 import { ReferralComposer } from "@/components/referrals/referral-composer";
 import { ReferralSubmissionForm } from "@/components/referrals/referral-submission";
+import { ContactInsightsPanel } from "@/components/referrals/contact-insights-panel";
 
 const DESC_COLLAPSE_LENGTH = 400;
 
@@ -231,13 +232,25 @@ export default function JobDetail() {
           </div>
         </section>
 
-        {/* Referral Nudge */}
+        {/* Contact Insights */}
         <div className="mt-8">
+          <ContactInsightsPanel
+            jobId={job.id}
+            jobTitle={job.title}
+            jobDescription={job.description}
+            company={typeof job.company === 'string' ? job.company : job.company.name}
+          />
+        </div>
+
+        {/* Referral Nudge */}
+        <div className="mt-6">
           <ReferralNudgePanel
             jobId={job.id}
             onOpenComposer={() => setComposerOpen(true)}
           />
         </div>
+
+
 
         {/* Action buttons */}
         <div className="mt-6 flex flex-wrap gap-3">

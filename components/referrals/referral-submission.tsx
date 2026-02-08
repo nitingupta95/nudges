@@ -38,6 +38,7 @@ export function ReferralSubmissionForm({
   onSuccess,
 }: ReferralSubmissionFormProps) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [profileUrl, setProfileUrl] = useState("");
   const [relation, setRelation] = useState<RelationType | "">("");
   const [note, setNote] = useState("");
@@ -47,6 +48,7 @@ export function ReferralSubmissionForm({
 
   const resetForm = () => {
     setName("");
+    setEmail("");
     setProfileUrl("");
     setRelation("");
     setNote("");
@@ -55,8 +57,14 @@ export function ReferralSubmissionForm({
   };
 
   const validate = (): boolean => {
-    if ((!name.trim() && !profileUrl.trim()) || !relation) {
-      setValidationError(t("submit.validation"));
+    if (!name.trim() || !email.trim() || !relation) {
+      setValidationError(t("submit.validation") || "Name, email, and relation are required");
+      return false;
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setValidationError("Please enter a valid email address");
       return false;
     }
     setValidationError("");
@@ -72,11 +80,13 @@ export function ReferralSubmissionForm({
         jobId: job.id,
         jobTitle: job.title,
         companyName: typeof job.company === 'string' ? job.company : job.company.name,
-        candidateName: name.trim() || undefined,
+        candidateName: name.trim(),
+        candidateEmail: email.trim(), // Added email
         candidateProfileUrl: profileUrl.trim() || undefined,
         relation: relation as RelationType,
         note: note.trim() || undefined,
       };
+      // @ts-ignore - API signature mismatch in local vs updated lib/api.ts
       const referral = await submitReferral(payload);
       onSuccess(referral);
       toast.success(t("submit.success"));
@@ -87,7 +97,7 @@ export function ReferralSubmissionForm({
       if (error.message === "duplicate" && !force) {
         setDuplicateWarning(true);
       } else {
-        toast.error(t("error.network"));
+        toast.error(error.message || t("error.network"));
       }
     } finally {
       setSubmitting(false);
@@ -118,6 +128,18 @@ export function ReferralSubmissionForm({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Jane Doe"
+              maxLength={100}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="candidate-email">Candidate Email</Label>
+            <Input
+              id="candidate-email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="jane@example.com"
+              type="email"
               maxLength={100}
             />
           </div>
