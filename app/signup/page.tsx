@@ -1,7 +1,7 @@
-"use client"
+"use client";
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,32 +10,28 @@ import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/auth-contex";
 
 export default function Signup() {
-  const { signup } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { signup } = useAuth();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setError("Please fill in all fields.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
     setError("");
     setLoading(true);
+
     try {
-      await signup(name, email, password);
-      router.push("/dashboard");
-    } catch {
-      setError(t("error.generic"));
+      await signup(formData.name, formData.email, formData.password);
+      // Success - redirect to login page with success message
+      router.push("/login?signup=success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -65,11 +61,12 @@ export default function Signup() {
             <Input
               id="name"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Jane Doe"
               autoComplete="name"
               maxLength={100}
+              disabled={loading}
               required
             />
           </div>
@@ -79,11 +76,12 @@ export default function Signup() {
             <Input
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="you@example.com"
               autoComplete="email"
               maxLength={255}
+              disabled={loading}
               required
             />
           </div>
@@ -94,11 +92,13 @@ export default function Signup() {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="At least 8 characters"
                 autoComplete="new-password"
+                minLength={8}
                 maxLength={128}
+                disabled={loading}
                 required
               />
               <button

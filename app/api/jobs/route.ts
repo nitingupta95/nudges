@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server"; 
+import { NextResponse } from "next/server";
 import { parseJobDescription } from "@/services/job/job.parser";
-import { createJob, listJobs } from "@/test/test3";
+import { createJob, listJobs } from "@/services/job/job.service";
 
 /**
  * GET: List all jobs with optional filters

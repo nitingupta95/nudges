@@ -1,5 +1,5 @@
-import { getJobById, updateJob } from "@/test/test3";
-import { NextResponse } from "next/server"; 
+import { getJobById, updateJob } from "@/services/job/job.service";
+import { NextResponse } from "next/server";
 
 /**
  * GET: Fetch a specific job by ID

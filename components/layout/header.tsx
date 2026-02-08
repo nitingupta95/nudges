@@ -72,7 +72,10 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={logout}
+                onClick={() => {
+                  logout();
+                  window.location.href = "/login";
+                }}
                 aria-label={t("nav.logout")}
               >
                 <LogOut className="h-4 w-4" />
@@ -138,6 +141,7 @@ export function Header() {
               onClick={() => {
                 logout();
                 setMobileOpen(false);
+                window.location.href = "/login";
               }}
             >
               <LogOut className="h-4 w-4" />

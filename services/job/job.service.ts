@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { Job, JobTag, ExperienceLevel, Prisma } from "@/lib/generated/prisma";
-import { parseJobDescription, ParsedJobTags } from "./job.parser";
-import { trackJobCreated, trackJobClosed } from "../events/event.service";
+import { ExperienceLevel } from "@/types/enums";
+import { ParsedJobTags, parseJobDescription } from "../job/job.parser";
+import { JobTag, Prisma } from "@/lib/generated/prisma/client";
+import { Job } from "@/types";
 
 // ============================================
 // TYPES
@@ -208,7 +209,7 @@ export async function createJob(input: CreateJobInput): Promise<JobWithTags> {
   const experienceLevel = input.experienceLevel ?? parsedTags.experienceLevel;
 
   // Create job with tags in a transaction
-  const job = await prisma.$transaction(async (tx) => {
+  const job = await prisma.$transaction(async (tx: any) => {
     const newJob = await tx.job.create({
       data: {
         title: input.title.trim(),
@@ -230,12 +231,13 @@ export async function createJob(input: CreateJobInput): Promise<JobWithTags> {
       data: {
         jobId: newJob.id,
         skills: parsedTags.skills,
-        domains: parsedTags.domains,
+        domains: [parsedTags.domain], // Convert singular domain to array
         keywords: parsedTags.keywords,
         experienceLevel,
-        seniorityTerms: parsedTags.seniorityTerms,
+        seniorityTerms: parsedTags.seniorityIndicators, // Use seniorityIndicators from parser
         techStack: parsedTags.techStack,
-        benefits: parsedTags.benefits,
+        benefits: [], // Parser doesn't extract benefits, set empty array
+        softSkills: parsedTags.softSkills,
         parserVersion: "v1",
         isManuallyEdited: false,
       },
@@ -243,9 +245,6 @@ export async function createJob(input: CreateJobInput): Promise<JobWithTags> {
 
     return newJob;
   });
-
-  // Track event
-  await trackJobCreated(input.createdById, job.id);
 
   // Return job with tags
   return getJobById(job.id) as Promise<JobWithTags>;
@@ -325,7 +324,7 @@ export async function listJobs(filters: JobFilters = {}): Promise<{
   const safeOffset = Math.max(0, offset);
 
   // Build where clause
-  const where: Prisma.JobWhereInput = {};
+  const where: any = {};
 
   // Text search
   if (search && search.trim().length > 0) {
@@ -391,7 +390,7 @@ export async function listJobs(filters: JobFilters = {}): Promise<{
   }
 
   // Build order by
-  const orderByClause: Prisma.JobOrderByWithRelationInput = {};
+  const orderByClause: any = {};
   orderByClause[orderBy] = orderDir;
 
   // Execute queries
@@ -478,7 +477,7 @@ export async function updateJob(
   }
 
   // Update in transaction
-  const job = await prisma.$transaction(async (tx) => {
+  const job = await prisma.$transaction(async (tx: any) => {
     const updated = await tx.job.update({
       where: { id: jobId },
       data: {
@@ -517,13 +516,14 @@ export async function updateJob(
         where: { id: existingJob.jobTag.id },
         data: {
           skills: updatedTags.skills,
-          domains: updatedTags.domains,
+          domains: [updatedTags.domain], // Convert singular domain to array
           keywords: updatedTags.keywords,
           experienceLevel:
             updateData.experienceLevel ?? updatedTags.experienceLevel,
-          seniorityTerms: updatedTags.seniorityTerms,
+          seniorityTerms: updatedTags.seniorityIndicators, // Use seniorityIndicators from parser
           techStack: updatedTags.techStack,
-          benefits: updatedTags.benefits,
+          benefits: [], // Parser doesn't extract benefits
+          softSkills: updatedTags.softSkills,
           parsedAt: new Date(),
           isManuallyEdited: false,
         },
@@ -532,11 +532,6 @@ export async function updateJob(
 
     return updated;
   });
-
-  // Track closure event
-  if (input.isActive === false && existingJob.isActive) {
-    await trackJobClosed(updatedById ?? existingJob.createdById, jobId);
-  }
 
   return getJobById(job.id) as Promise<JobWithTags>;
 }
@@ -721,7 +716,7 @@ export async function getJobStats(): Promise<{
 
   // Transform experience level counts
   const jobsByExperience = jobsByExpRaw.reduce(
-    (acc, item) => {
+    (acc: any, item: any) => {
       acc[item.experienceLevel] = item._count.experienceLevel;
       return acc;
     },
@@ -729,7 +724,7 @@ export async function getJobStats(): Promise<{
   );
 
   // Transform companies
-  const topCompanies = topCompaniesRaw.map((item) => ({
+  const topCompanies = topCompaniesRaw.map((item: any) => ({
     company: item.company,
     count: item._count.company,
   }));

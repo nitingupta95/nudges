@@ -1,7 +1,7 @@
-"use client"
+"use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,27 +10,34 @@ import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/auth-contex";
 
 export default function Login() {
-  const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const searchParams = useSearchParams();
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState(
+    searchParams.get("signup") === "success"
+      ? "Account created successfully! Please login."
+      : ""
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setError("Please fill in all fields.");
-      return;
-    }
     setError("");
+    setSuccessMessage("");
     setLoading(true);
+
     try {
-      await login(email, password);
+      await login(formData.email, formData.password);
+      // Success - redirect to dashboard
       router.push("/dashboard");
-    } catch {
-      setError(t("error.generic"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -55,16 +62,23 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {successMessage && (
+            <p className="text-sm text-green-600 bg-green-50 p-3 rounded-md" role="status">
+              {successMessage}
+            </p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="you@example.com"
               autoComplete="email"
               maxLength={255}
+              disabled={loading}
               required
             />
           </div>
@@ -75,10 +89,11 @@ export default function Login() {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 autoComplete="current-password"
                 maxLength={128}
+                disabled={loading}
                 required
               />
               <button
