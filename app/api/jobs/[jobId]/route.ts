@@ -6,10 +6,10 @@ import { NextResponse } from "next/server";
  */
 export async function GET(
   req: Request,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const { jobId } = params;
+    const { jobId } = await params;
 
     const job = await getJobById(jobId);
 
@@ -32,10 +32,10 @@ export async function GET(
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const { jobId } = params;
+    const { jobId } = await params;
     const body = await req.json();
 
     const updatedJob = await updateJob(jobId, body);

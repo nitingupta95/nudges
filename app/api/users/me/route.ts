@@ -7,15 +7,20 @@ import { getUserProfile } from "@/services/user/user.service";
  */
 export async function GET(req: Request) {
   try {
-    const user = await requireAuth(req);
+    console.log("=== /api/users/me called ===");
+    console.log("Cookie header:", req.headers.get("cookie"));
 
-    const userProfile = await getUserProfile(user.id);
+    const authUser = await requireAuth(req);
+    console.log("Auth successful for user:", authUser.id);
+
+    const userProfile = await getUserProfile(authUser.id);
 
     if (!userProfile) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ user: userProfile });
+    // Return user data directly (not wrapped in { user: ... })
+    return NextResponse.json(userProfile);
   } catch (error) {
     console.error("Error fetching user profile:", error);
     if (error instanceof Error && error.message === "Unauthorized") {

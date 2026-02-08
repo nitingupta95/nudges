@@ -36,17 +36,17 @@ export async function createReferral(
   // Create the referral
   return prisma.referral.create({
     data: {
-      userId,
+      referrerId: userId,
       jobId,
-      relation,
+      relationType: relation,
       candidateName,
       candidateEmail: candidateEmail.toLowerCase(),
       candidatePhone,
       referralNote,
-      status: ReferralStatus.VIEWED,
+      status: ReferralStatus.DRAFT,
       statusHistory: [
         {
-          status: ReferralStatus.VIEWED,
+          status: ReferralStatus.DRAFT,
           timestamp: new Date().toISOString(),
           note: "Referral created",
         },
@@ -64,7 +64,7 @@ export async function listReferrals(
   options?: { status?: ReferralStatus; limit?: number; offset?: number }
 ) {
   const where = {
-    userId,
+    referrerId: userId,
     status: options?.status ?? undefined,
   };
 
@@ -139,7 +139,7 @@ export async function getReferralById(referralId: string) {
           company: true,
         },
       },
-      user: {
+      referrer: {
         select: {
           id: true,
           name: true,
@@ -178,7 +178,7 @@ export async function getReferralAnalytics(userId: string) {
   const counts = await Promise.all(
     statuses.map((status) =>
       prisma.referral.count({
-        where: { userId, status },
+        where: { referrerId: userId, status },
       })
     )
   );

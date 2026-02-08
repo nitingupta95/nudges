@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import { EventType } from "@/types/enums";
+import { Prisma, EventType } from "@/lib/generated/prisma/client";
 
 // ============================================
 // TYPES

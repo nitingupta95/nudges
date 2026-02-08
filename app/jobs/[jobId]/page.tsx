@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton"; 
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchJob } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -49,8 +49,8 @@ export default function JobDetail() {
   }, [job, isLongDesc, descExpanded]);
 
   const isClosingSoon = useMemo(() => {
-    if (!job?.closingAt) return false;
-    return differenceInDays(parseISO(job.closingAt), new Date()) <= 7;
+    if (!job?.closingDate) return false;
+    return differenceInDays(parseISO(job.closingDate), new Date()) <= 7;
   }, [job]);
 
   if (loading) {
@@ -108,7 +108,7 @@ export default function JobDetail() {
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground font-bold"
               aria-hidden="true"
             >
-              {job.company.name.charAt(0)}
+              {typeof job.company === "string" ? job.company.charAt(0) : job.company.name.charAt(0)}
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-foreground md:text-3xl">
@@ -117,7 +117,7 @@ export default function JobDetail() {
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <Building2 className="h-4 w-4" />
-                  {job.company.name}
+                  {typeof job.company === "string" ? job.company : job.company.name}
                 </span>
                 {job.location && (
                   <span className="inline-flex items-center gap-1">
@@ -131,11 +131,11 @@ export default function JobDetail() {
                     date: format(parseISO(job.postedAt), "MMM d, yyyy"),
                   })}
                 </span>
-                {job.closingAt && (
+                {job.closingDate && (
                   <span className="inline-flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     {t("job.closesOn", {
-                      date: format(parseISO(job.closingAt), "MMM d, yyyy"),
+                      date: format(parseISO(job.closingDate), "MMM d, yyyy"),
                     })}
                   </span>
                 )}

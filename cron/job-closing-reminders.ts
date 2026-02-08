@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma"; 
+import { prisma } from "@/lib/prisma";
 
- 
+
 
 /**
  * Finds jobs closing within 48 hours.
@@ -11,7 +11,7 @@ export async function runJobClosingReminders() {
 
   const jobs = await prisma.job.findMany({
     where: {
-      closingAt: {
+      closingDate: {
         lte: cutoff,
         gte: new Date(),
       },
@@ -19,10 +19,11 @@ export async function runJobClosingReminders() {
   });
 
   for (const job of jobs) {
-    await trackEvent("JOB_VIEWED", undefined, {
-      jobId: job.id,
-      trigger: "closing_soon",
-    });
+    // TODO: Implement event tracking
+    // await trackEvent("JOB_CLOSING_REMINDER", undefined, {
+    //   jobId: job.id,
+    //   trigger: "closing_soon",
+    // });
+    console.log(`Job closing soon: ${job.id} - ${job.title}`);
   }
 }
-

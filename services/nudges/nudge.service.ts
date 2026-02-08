@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { generateNudges } from "./nudge.engine";
+import { generateNudges, NudgeResult } from "./nudge.engine";
 
 /**
  * Get referral nudges for a specific user and job.
- * Returns an array of human-readable nudge suggestions.
+ * Returns nudge suggestions with source information.
  */
-export async function getReferralNudges(userId: string, jobId: string) {
+export async function getReferralNudges(userId: string, jobId: string): Promise<NudgeResult> {
   // Fetch the job and member profile in parallel
   const [job, profile] = await Promise.all([
     prisma.job.findUnique({
@@ -27,7 +27,7 @@ export async function getReferralNudges(userId: string, jobId: string) {
   }
 
   // Generate nudges using the nudge engine
-  const nudges = generateNudges(job, profile);
+  const result = await generateNudges(job, profile);
 
   // Track the event for analytics (optional)
   await prisma.event.create({
@@ -35,9 +35,12 @@ export async function getReferralNudges(userId: string, jobId: string) {
       type: "NUDGES_SHOWN",
       userId,
       jobId,
-      metadata: { nudgeCount: nudges.length },
+      metadata: {
+        nudgeCount: result.nudges.length,
+        source: result.source,
+      },
     },
   });
 
-  return nudges;
+  return result;
 }

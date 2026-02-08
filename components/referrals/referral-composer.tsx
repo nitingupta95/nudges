@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { t } from "@/lib/i18n";
 import { messageTemplates } from "@/mock/data";
-import type { Job } from "@/types"; 
+import type { Job } from "@/types";
 import { Copy, ExternalLink, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,14 +35,15 @@ export function ReferralComposer({
     messageTemplates[0].id
   );
   const [contacted, setContacted] = useState(false);
- 
+
 
   const template = messageTemplates.find((t) => t.id === selectedTemplate)!;
 
   const fillTemplate = (body: string) => {
+    const companyName = typeof job.company === 'string' ? job.company : job.company.name;
     return body
       .replace("{role}", job.title)
-      .replace("{company}", job.company.name)
+      .replace("{company}", companyName)
       .replace("{skills}", job.skills?.slice(0, 3).join(", ") || "relevant skills");
   };
 
@@ -65,11 +66,11 @@ export function ReferralComposer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg" aria-describedby="composer-desc">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="composer-desc">
         <DialogHeader>
           <DialogTitle>{t("composer.title")}</DialogTitle>
           <DialogDescription id="composer-desc">
-            {job.title} at {job.company.name}
+            {job.title} at {typeof job.company === 'string' ? job.company : job.company.name}
           </DialogDescription>
         </DialogHeader>
 
@@ -83,11 +84,10 @@ export function ReferralComposer({
               <button
                 key={tmpl.id}
                 onClick={() => handleTemplateChange(tmpl.id)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  selectedTemplate === tmpl.id
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${selectedTemplate === tmpl.id
                     ? "border-accent bg-accent/10 text-accent-foreground"
                     : "border-border text-muted-foreground hover:border-accent/50"
-                }`}
+                  }`}
               >
                 {tmpl.label}
               </button>

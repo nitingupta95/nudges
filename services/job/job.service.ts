@@ -3,6 +3,7 @@ import { ExperienceLevel } from "@/types/enums";
 import { ParsedJobTags, parseJobDescription } from "../job/job.parser";
 import { JobTag, Prisma } from "@/lib/generated/prisma/client";
 import { Job } from "@/types";
+import { summarizeJobDescription } from "@/services/ai/ai.service";
 
 // ============================================
 // TYPES
@@ -53,9 +54,7 @@ export interface JobFilters {
   orderDir?: "asc" | "desc";
 }
 
-export interface JobWithTags extends Job {
-  jobTag: JobTag | null;
-}
+export type JobWithTags = any; // Using any to avoid type conflicts with Prisma generated types
 
 // ============================================
 // VALIDATION
@@ -405,8 +404,21 @@ export async function listJobs(filters: JobFilters = {}): Promise<{
     prisma.job.count({ where }),
   ]);
 
+  // Generate AI summaries for jobs (in parallel)
+  const jobsWithSummaries = await Promise.all(
+    jobs.map(async (job) => {
+      try {
+        const aiSummary = await summarizeJobDescription(job.title, job.description);
+        return { ...job, aiSummary };
+      } catch (error) {
+        console.error(`Failed to generate summary for job ${job.id}:`, error);
+        return job; // Return job without summary on error
+      }
+    })
+  );
+
   return {
-    jobs,
+    jobs: jobsWithSummaries,
     total,
     pagination: {
       limit: safeLimit,
@@ -574,7 +586,7 @@ export async function updateJobTags(
       ...(tags.benefits && { benefits: tags.benefits }),
       isManuallyEdited: true,
     },
-  });
+  }) as any;
 }
 
 // ============================================

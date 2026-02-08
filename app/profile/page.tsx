@@ -1,13 +1,25 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label"; 
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TagInput } from "@/components/ui/tag-input";
 import { t } from "@/lib/i18n";
 import { useState } from "react";
-import { ShieldCheck, Briefcase, Code } from "lucide-react";
+import { ShieldCheck, Briefcase, Code, Edit2, Save, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-contex";
 import { PageLayout } from "@/components/layout/page-layout";
+import { toast } from "sonner";
+
 
 const preferenceFlags = [
   { key: "relatives_in_tech", label: t("profile.relativesInTech") },
@@ -15,10 +27,39 @@ const preferenceFlags = [
   { key: "bootcamp_grads", label: t("profile.bootcampGrads") },
 ];
 
+const domainOptions = [
+  "Fintech",
+  "Productivity",
+  "Consumer",
+  "Enterprise",
+  "Healthcare",
+  "Education",
+  "E-commerce",
+  "Social",
+  "Gaming",
+  "AI/ML",
+];
+
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form state
+  const [skills, setSkills] = useState<string[]>(user?.memberProfile?.skills || []);
+  const [pastCompanies, setPastCompanies] = useState<string[]>(
+    user?.memberProfile?.pastCompanies || []
+  );
+  const [domains, setDomains] = useState<string[]>(user?.memberProfile?.domains || []);
+  const [experienceLevel, setExperienceLevel] = useState<string>(
+    user?.memberProfile?.experienceLevel || "mid"
+  );
+  const [yearsOfExperience, setYearsOfExperience] = useState<number>(
+    user?.memberProfile?.yearsOfExperience || 0
+  );
   const [preferences, setPreferences] = useState<string[]>(
-    user?.profile.preferences || []
+    user?.memberProfile?.preferences || []
   );
 
   const togglePref = (key: string) => {
@@ -27,14 +68,95 @@ export default function Profile() {
     );
   };
 
+  const toggleDomain = (domain: string) => {
+    setDomains((prev) =>
+      prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
+    );
+  };
+
+  const handleCancel = () => {
+    // Reset form to original values
+    setSkills(user?.memberProfile?.skills || []);
+    setPastCompanies(user?.memberProfile?.pastCompanies || []);
+    setDomains(user?.memberProfile?.domains || []);
+    setExperienceLevel(user?.memberProfile?.experienceLevel || "mid");
+    setYearsOfExperience(user?.memberProfile?.yearsOfExperience || 0);
+    setPreferences(user?.memberProfile?.preferences || []);
+    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/users/me/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          skills,
+          pastCompanies,
+          domains,
+          experienceLevel,
+          yearsOfExperience,
+          preferredDomains: domains,
+          preferredRoles: [],
+          isOpenToRefer: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update profile");
+      }
+
+      toast.success("Profile updated successfully!");
+      setIsEditing(false);
+
+      // Refresh user data from the server
+      await refreshUser();
+    } catch (error) {
+      console.error("Save profile error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!user) return null;
 
   return (
     <PageLayout>
       <div className="container max-w-2xl py-8 space-y-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          {t("profile.title")}
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-foreground">
+            {t("profile.title")}
+          </h1>
+          {!isEditing ? (
+            <Button onClick={() => setIsEditing(true)} variant="outline">
+              <Edit2 className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCancel}
+                variant="outline"
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving}>
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Profile info */}
         <section className="rounded-lg border bg-card p-6 space-y-6">
@@ -58,13 +180,25 @@ export default function Profile() {
               <Code className="h-4 w-4" />
               {t("profile.skills")}
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {user.profile.skills.map((skill) => (
-                <Badge key={skill} variant="secondary">
-                  {skill}
-                </Badge>
-              ))}
-            </div>
+            {isEditing ? (
+              <TagInput
+                tags={skills}
+                onChange={setSkills}
+                placeholder="Add skill (press Enter)"
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user?.memberProfile?.skills?.map((skill) => (
+                  <Badge key={skill} variant="secondary">
+                    {skill}
+                  </Badge>
+                )) || (
+                    <p className="text-sm text-muted-foreground">
+                      No skills added yet
+                    </p>
+                  )}
+              </div>
+            )}
           </div>
 
           {/* Companies */}
@@ -73,28 +207,102 @@ export default function Profile() {
               <Briefcase className="h-4 w-4" />
               {t("profile.companies")}
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {user.profile.pastCompanies.map((company) => (
-                <Badge key={company} variant="secondary">
-                  {company}
-                </Badge>
-              ))}
-            </div>
+            {isEditing ? (
+              <TagInput
+                tags={pastCompanies}
+                onChange={setPastCompanies}
+                placeholder="Add company (press Enter)"
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user?.memberProfile?.pastCompanies?.map((company) => (
+                  <Badge key={company} variant="secondary">
+                    {company}
+                  </Badge>
+                )) || (
+                    <p className="text-sm text-muted-foreground">
+                      No companies added yet
+                    </p>
+                  )}
+              </div>
+            )}
           </div>
 
-          {/* Experience */}
-          {user.profile.experienceYears && (
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                {t("profile.experience")}
-              </h3>
-              <p className="text-sm text-foreground">
-                {t("profile.years", {
-                  count: String(user.profile.experienceYears),
-                })}
+          {/* Domains */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              Domains
+            </h3>
+            {isEditing ? (
+              <div className="flex flex-wrap gap-2">
+                {domainOptions.map((domain) => (
+                  <Badge
+                    key={domain}
+                    variant={domains.includes(domain) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleDomain(domain)}
+                  >
+                    {domain}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user?.memberProfile?.domains?.map((domain) => (
+                  <Badge key={domain} variant="secondary">
+                    {domain}
+                  </Badge>
+                )) || (
+                    <p className="text-sm text-muted-foreground">
+                      No domains selected
+                    </p>
+                  )}
+              </div>
+            )}
+          </div>
+
+          {/* Experience Level */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              Experience Level
+            </h3>
+            {isEditing ? (
+              <Select value={experienceLevel} onValueChange={setExperienceLevel}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="junior">Junior</SelectItem>
+                  <SelectItem value="mid">Mid-Level</SelectItem>
+                  <SelectItem value="senior">Senior</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-foreground capitalize">
+                {user?.memberProfile?.experienceLevel || "Not set"}
               </p>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Years of Experience */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">
+              Years of Experience
+            </h3>
+            {isEditing ? (
+              <Input
+                type="number"
+                min="0"
+                value={yearsOfExperience}
+                onChange={(e) => setYearsOfExperience(parseInt(e.target.value) || 0)}
+                className="w-full"
+              />
+            ) : (
+              <p className="text-sm text-foreground">
+                {user?.memberProfile?.yearsOfExperience || 0} years
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Preferences */}
@@ -121,6 +329,7 @@ export default function Profile() {
                   id={pref.key}
                   checked={preferences.includes(pref.key)}
                   onCheckedChange={() => togglePref(pref.key)}
+                  disabled={!isEditing}
                 />
               </div>
             ))}

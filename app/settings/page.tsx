@@ -38,14 +38,14 @@ export default function Settings() {
               <div className="flex items-center justify-between rounded-md border bg-secondary/30 p-3">
                 <span className="text-sm text-foreground">Skills</span>
                 <div className="flex gap-1.5">
-                  {user.profile.skills.slice(0, 3).map((s) => (
+                  {user?.memberProfile?.skills?.slice(0, 3).map((s) => (
                     <Badge key={s} variant="secondary" className="text-xs">
                       {s}
                     </Badge>
                   ))}
-                  {user.profile.skills.length > 3 && (
+                  {user?.memberProfile?.skills && user.memberProfile.skills.length > 3 && (
                     <Badge variant="secondary" className="text-xs">
-                      +{user.profile.skills.length - 3}
+                      +{user.memberProfile.skills.length - 3}
                     </Badge>
                   )}
                 </div>
@@ -53,7 +53,7 @@ export default function Settings() {
               <div className="flex items-center justify-between rounded-md border bg-secondary/30 p-3">
                 <span className="text-sm text-foreground">Past companies</span>
                 <div className="flex gap-1.5">
-                  {user.profile.pastCompanies.map((c) => (
+                  {user?.memberProfile?.pastCompanies?.map((c) => (
                     <Badge key={c} variant="secondary" className="text-xs">
                       {c}
                     </Badge>
@@ -65,9 +65,9 @@ export default function Settings() {
                   Network preferences
                 </span>
                 <div className="flex gap-1.5">
-                  {user.profile.preferences &&
-                  user.profile.preferences.length > 0 ? (
-                    user.profile.preferences.map((p) => (
+                  {user?.memberProfile?.domains &&
+                    user.memberProfile.domains.length > 0 ? (
+                    user.memberProfile.domains.map((p: string) => (
                       <Badge key={p} variant="secondary" className="text-xs">
                         {p.replace(/_/g, " ")}
                       </Badge>

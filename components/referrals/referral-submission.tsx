@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { t } from "@/lib/i18n";
 import { submitReferral } from "@/lib/api";
-import type { Job, ReferralSubmission, RelationType } from "@/types"; 
+import type { Job, ReferralSubmission, RelationType } from "@/types";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,7 +43,7 @@ export function ReferralSubmissionForm({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
-  const [duplicateWarning, setDuplicateWarning] = useState(false); 
+  const [duplicateWarning, setDuplicateWarning] = useState(false);
 
   const resetForm = () => {
     setName("");
@@ -68,15 +68,16 @@ export function ReferralSubmissionForm({
 
     setSubmitting(true);
     try {
-      const referral = await submitReferral({
+      const payload = {
         jobId: job.id,
         jobTitle: job.title,
-        companyName: job.company.name,
+        companyName: typeof job.company === 'string' ? job.company : job.company.name,
         candidateName: name.trim() || undefined,
         candidateProfileUrl: profileUrl.trim() || undefined,
         relation: relation as RelationType,
         note: note.trim() || undefined,
-      });
+      };
+      const referral = await submitReferral(payload);
       onSuccess(referral);
       toast.success(t("submit.success"));
       resetForm();
@@ -105,7 +106,7 @@ export function ReferralSubmissionForm({
         <DialogHeader>
           <DialogTitle>{t("submit.title")}</DialogTitle>
           <DialogDescription id="submit-desc">
-            {job.title} at {job.company.name}
+            {job.title} at {typeof job.company === 'string' ? job.company : job.company.name}
           </DialogDescription>
         </DialogHeader>
 

@@ -7,7 +7,8 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   loading: boolean;
 }
 
@@ -21,26 +22,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("auth_token");
-        if (token) {
-          // Verify token and get user data
-          const response = await fetch("/api/users/me", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+        // Cookie is automatically sent with the request
+        const response = await fetch("/api/users/me", {
+          credentials: "include", // Important: include cookies
+        });
 
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          } else {
-            // Token invalid, clear it
-            localStorage.removeItem("auth_token");
-          }
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
         }
       } catch (error) {
         console.error("Auth check failed:", error);
-        localStorage.removeItem("auth_token");
       } finally {
         setLoading(false);
       }
@@ -55,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include", // Important: include cookies
       body: JSON.stringify({ email, password }),
     });
 
@@ -65,10 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const data = await response.json();
 
-    // Store token
-    localStorage.setItem("auth_token", data.token);
-
-    // Set user data
+    // Set user data (token is in cookie)
     setUser(data.user);
   }, []);
 
@@ -79,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important: include cookies
         body: JSON.stringify({ name, email, password }),
       });
 
@@ -87,20 +78,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(error.error || "Signup failed");
       }
 
-      // Don't auto-login after signup, let user login manually
-      // This is more secure and follows best practices
+      const data = await response.json();
+
+      // Auto-login after signup
+      setUser(data.user);
     },
     []
   );
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("auth_token");
-    setUser(null);
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include", // Important: include cookies
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+    }
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await fetch("/api/users/me", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error("Refresh user failed:", error);
+    }
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, login, signup, logout, loading }}
+      value={{ user, isAuthenticated: !!user, login, signup, logout, refreshUser, loading }}
     >
       {children}
     </AuthContext.Provider>

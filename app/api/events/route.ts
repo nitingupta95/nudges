@@ -6,7 +6,7 @@ import {
   getEventCountsByJob,
   getEventAggregations,
   deleteOldEvents,
-} from "@/services/events/event.service"; 
+} from "@/services/events/event.service";
 import { EventType } from "@/lib/generated/prisma/client";
 
 // ============================================

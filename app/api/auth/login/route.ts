@@ -20,7 +20,27 @@ export async function POST(req: Request) {
 
     const result = await loginUser(email, password);
 
-    return NextResponse.json(result);
+    console.log("Login successful, setting cookie for user:", result.user.id);
+
+    // Create response with user data (without token)
+    const response = NextResponse.json({
+      user: result.user,
+    });
+
+    // Set HTTP-only cookie with the token
+    response.cookies.set({
+      name: "auth_token",
+      value: result.token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+
+    console.log("Cookie set successfully");
+
+    return response;
   } catch (error) {
     console.error("Login error:", error);
 

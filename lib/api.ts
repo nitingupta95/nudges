@@ -33,16 +33,20 @@ export async function fetchJobs(filters?: JobFilters): Promise<Job[]> {
     const soon = new Date();
     soon.setDate(soon.getDate() + 7);
     jobs = jobs.filter(
-      (j) => j.closingAt && new Date(j.closingAt) <= soon
+      (j) => j.closingDate && new Date(j.closingDate) <= soon
     );
   }
   if (filters?.search) {
     const q = filters.search.toLowerCase();
     jobs = jobs.filter(
-      (j) =>
-        j.title.toLowerCase().includes(q) ||
-        j.company.name.toLowerCase().includes(q) ||
-        j.skills?.some((s) => s.includes(q))
+      (j) => {
+        const companyName = typeof j.company === "string" ? j.company : j.company.name;
+        return (
+          j.title.toLowerCase().includes(q) ||
+          companyName.toLowerCase().includes(q) ||
+          j.skills?.some((s) => s.includes(q))
+        );
+      }
     );
   }
 

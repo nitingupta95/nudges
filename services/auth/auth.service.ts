@@ -28,6 +28,7 @@ export interface SignupResponse {
         name: string;
         email: string;
     };
+    token: string;
 }
 
 // ============================================
@@ -129,13 +130,34 @@ export async function signupUser(
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user
+    // Create new user with member profile in a transaction
     const newUser = await prisma.user.create({
         data: {
             name,
             email,
             password: hashedPassword,
+            memberProfile: {
+                create: {
+                    skills: [],
+                    pastCompanies: [],
+                    domains: [],
+                    experienceLevel: "MID",
+                    yearsOfExperience: 0,
+                    preferredDomains: [],
+                    preferredRoles: [],
+                    isOpenToRefer: true,
+                    profileCompleteness: 0,
+                },
+            },
         },
+    });
+
+    // Generate auth token
+    const token = generateToken({
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
     });
 
     return {
@@ -145,5 +167,6 @@ export async function signupUser(
             name: newUser.name,
             email: newUser.email,
         },
+        token,
     };
 }

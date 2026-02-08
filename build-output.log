@@ -1,0 +1,28 @@
+
+> nudges@0.1.0 build
+> next build
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/nitingupta/Documents/Projects/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Users/nitingupta/Documents/Projects/sumit/nudges/package-lock.json
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1626.4ms
+  Running TypeScript ...
+Failed to compile.
+
+Type error: Type 'typeof import("/Users/nitingupta/Documents/Projects/sumit/nudges/app/api/jobs/[jobId]/summary/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/jobs/[jobId]/summary">'.
+  Types of property 'GET' are incompatible.
+    Type '(req: Request, { params }: { params: { jobId: string; }; }) => Promise<NextResponse<{ error: string; }> | NextResponse<JobSummary>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ jobId: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ jobId: string; }>; }' is not assignable to type '{ params: { jobId: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'jobId' is missing in type 'Promise<{ jobId: string; }>' but required in type '{ jobId: string; }'.
+
+Next.js build worker exited with code: 1 and signal: null

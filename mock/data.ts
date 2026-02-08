@@ -6,15 +6,16 @@ import type {
 } from "@/types";
 
 export const currentUser: User = {
-  id: "u-1",
-  name: "Arjun Mehta",
+  id: "user-1",
+  name: "Arjun Sharma",
   email: "arjun@example.com",
   roles: ["member"],
-  profile: {
+  memberProfile: {
     skills: ["react", "typescript", "node.js", "system design"],
     pastCompanies: ["Flipkart", "Razorpay"],
     experienceYears: 6,
-    preferences: ["relatives_in_tech"],
+    domains: ["fintech", "ecommerce"],
+    preferences: ["remote", "flexible_hours"],
   },
 };
 
@@ -25,7 +26,7 @@ export const mockJobs: Job[] = [
     company: { id: "c-1", name: "Zerodha", type: "Fintech" },
     location: "Bengaluru, India",
     postedAt: "2026-01-28T10:00:00Z",
-    closingAt: "2026-02-14T23:59:59Z",
+    closingDate: "2026-02-14T23:59:59Z",
     description:
       "We're looking for a Senior Frontend Engineer to lead our trading dashboard rebuild. You'll work closely with product and design to ship performant, real-time interfaces used by millions of traders daily.\n\nThe ideal candidate has deep experience with React, TypeScript, and WebSocket-driven UIs. You should be comfortable owning large features end-to-end and mentoring junior engineers.\n\nThis is a high-impact role — the trading dashboard is our most-used product surface.",
     responsibilities: [
@@ -51,7 +52,7 @@ export const mockJobs: Job[] = [
     company: { id: "c-2", name: "Razorpay", type: "Fintech" },
     location: "Bengaluru, India",
     postedAt: "2026-01-30T10:00:00Z",
-    closingAt: "2026-02-20T23:59:59Z",
+    closingDate: "2026-02-20T23:59:59Z",
     description:
       "Join the Payments team at Razorpay to build and scale payment processing systems handling millions of transactions daily. You'll design APIs, optimize database queries, and ensure five-nines uptime for critical payment flows.",
     responsibilities: [
@@ -76,7 +77,7 @@ export const mockJobs: Job[] = [
     company: { id: "c-3", name: "Notion", type: "Productivity" },
     location: "Remote",
     postedAt: "2026-02-01T10:00:00Z",
-    closingAt: "2026-02-28T23:59:59Z",
+    closingDate: "2026-02-28T23:59:59Z",
     description:
       "We're hiring a Product Designer to shape the future of collaborative workspaces. You'll work on core editor experiences, designing interactions that feel intuitive for millions of users worldwide.\n\nWe value designers who think in systems, prototype rapidly, and communicate design decisions clearly.",
     responsibilities: [
@@ -124,7 +125,7 @@ export const mockJobs: Job[] = [
     company: { id: "c-5", name: "Postman", type: "Developer Tools" },
     location: "Remote",
     postedAt: "2026-02-04T10:00:00Z",
-    closingAt: "2026-03-01T23:59:59Z",
+    closingDate: "2026-03-01T23:59:59Z",
     description:
       "We need a DevOps Engineer to scale our cloud infrastructure and CI/CD pipelines. You'll work on Kubernetes clusters, observability, and deployment automation for a platform used by 30M+ developers.",
     skills: ["kubernetes", "terraform", "aws", "ci/cd", "observability"],
@@ -137,7 +138,7 @@ export const mockJobs: Job[] = [
     company: { id: "c-6", name: "Cred", type: "Fintech" },
     location: "Bengaluru, India",
     postedAt: "2026-02-05T10:00:00Z",
-    closingAt: "2026-02-25T23:59:59Z",
+    closingDate: "2026-02-25T23:59:59Z",
     description:
       "Kickstart your career at Cred. We're looking for a motivated full-stack developer to work across our React frontend and Node.js backend. You'll ship features that delight millions of users while learning from experienced engineers.",
     skills: ["react", "node.js", "typescript", "postgresql"],

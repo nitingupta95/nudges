@@ -18,7 +18,7 @@ export function PageLayout({ children, showFooter = true }: PageLayoutProps) {
         Skip to main content
       </a>
       <Header />
-      <main id="main-content" className="flex-1">
+      <main id="main-content" className="flex-1 bg-gray-50">
         {children}
       </main>
       {showFooter && <Footer />}

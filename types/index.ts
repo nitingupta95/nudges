@@ -8,16 +8,40 @@ export interface Company {
 export interface Job {
   id: string;
   title: string;
-  company: Company;
+  company: Company | string; // Can be Company object or string
   location?: string;
   postedAt: string;
-  closingAt?: string;
+  closingDate?: string; // Changed from closingAt to match schema
   description: string;
   responsibilities?: string[];
   requirements?: string[];
   skills?: string[];
+  domains?: string[];
   experienceLevel?: "junior" | "mid" | "senior";
   domain?: string;
+  aiSummary?: JobSummary;
+}
+
+export interface JobSummary {
+  bullets: string[];
+  source: "ai" | "static";
+  generatedAt: string;
+}
+
+export interface MemberProfile {
+  id: string;
+  userId: string;
+  skills: string[];
+  pastCompanies: string[];
+  domains: string[];
+  experienceLevel: "junior" | "mid" | "senior";
+  yearsOfExperience: number;
+  currentCompany?: string;
+  currentTitle?: string;
+  location?: string;
+  preferredDomains: string[];
+  preferredRoles: string[];
+  isOpenToRefer: boolean;
 }
 
 export interface ReferralNudgeResponse {
@@ -61,7 +85,10 @@ export interface ActivityEntry {
 export interface UserProfile {
   skills: string[];
   pastCompanies: string[];
-  experienceYears?: number;
+  domains?: string[];
+  experienceLevel?: "junior" | "mid" | "senior";
+  yearsOfExperience?: number;
+  experienceYears?: number; // Deprecated, use yearsOfExperience
   preferences?: string[];
 }
 
@@ -70,7 +97,7 @@ export interface User {
   name: string;
   email: string;
   roles: string[];
-  profile: UserProfile;
+  memberProfile: UserProfile;
 }
 
 export interface JobFilters {
@@ -78,6 +105,7 @@ export interface JobFilters {
   experienceLevel?: string;
   location?: string;
   closingSoon?: boolean;
+  goodFit?: boolean;
   search?: string;
 }
 
