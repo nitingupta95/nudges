@@ -32,7 +32,7 @@ export async function getReferralNudges(userId: string, jobId: string): Promise<
   // Track the event for analytics (optional)
   await prisma.event.create({
     data: {
-      type: "NUDGES_SHOWN",
+      type: "NUDGE_SHOWN",
       userId,
       jobId,
       metadata: {

@@ -34,9 +34,12 @@ enum ExperienceLevel {
 }
 
 enum ReferralStatus {
+  PENDING
   DRAFT
   SUBMITTED
+  VIEWED
   UNDER_REVIEW
+  SHORTLISTED
   INTERVIEWING
   OFFERED
   HIRED
@@ -45,8 +48,12 @@ enum ReferralStatus {
 }
 
 enum RelationType {
-  FRIEND
   EX_COLLEAGUE
+  COLLEGE_ALUMNI
+  FRIEND
+  FAMILY
+  BOOTCAMP_CONNECTION
+  LINKEDIN_CONNECTION
   RELATIVE
   CLASSMATE
   MENTOR
@@ -56,18 +63,60 @@ enum RelationType {
 
 enum EventType {
   JOB_VIEWED
-  NUDGES_SHOWN
+  JOB_SEARCHED
+  NUDGE_SHOWN
+  NUDGE_CLICKED
+  NUDGE_DISMISSED
+  MESSAGE_GENERATED
   MESSAGE_COPIED
   REFERRAL_STARTED
   REFERRAL_SUBMITTED
   REFERRAL_STATUS_CHANGED
+  REFERRAL_WITHDRAWN
   PROFILE_UPDATED
   JOB_CREATED
   JOB_CLOSED
   JOB_CLOSING_REMINDER
+  SHARE_CLICKED
   LOGIN
   SIGNUP
   LOGOUT
+}
+
+// Parse source for job tags
+enum ParseSource {
+  NLP
+  AI
+  MANUAL
+}
+
+// Match tier classification
+enum MatchTier {
+  HIGH // 70-100 score
+  MEDIUM // 40-69 score
+  LOW // 0-39 score
+}
+
+// Nudge type classification
+enum NudgeType {
+  PERSONALIZED
+  COMPANY_BASED
+  SKILL_BASED
+  INDUSTRY_BASED
+  GENERIC
+}
+
+// Interaction actions for nudge tracking
+enum InteractionAction {
+  VIEWED
+  HOVERED
+  CLICKED
+  SHARE_WHATSAPP
+  SHARE_LINKEDIN
+  SHARE_EMAIL
+  COPY_MESSAGE
+  DISMISSED
+  REFERRED
 }
 
 // ============================================
@@ -76,21 +125,21 @@ enum EventType {
 
 /// User model - core authentication and identity
 model User {
-  id            String          @id @default(cuid())
-  email         String          @unique
-  password      String          // Hashed password (salt:hash format)
-  name          String
-  role          Role            @default(MEMBER)
-  isActive      Boolean         @default(true)
-  lastLoginAt   DateTime?       // Track last login for analytics
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String // Hashed password (salt:hash format)
+  name        String
+  role        Role      @default(MEMBER)
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime? // Track last login for analytics
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
   memberProfile MemberProfile?
-  referrals     Referral[]      @relation("ReferrerReferrals")
+  referrals     Referral[]     @relation("ReferrerReferrals")
   events        Event[]
-  createdJobs   Job[]           @relation("CreatedJobs")
+  createdJobs   Job[]          @relation("CreatedJobs")
 
   @@index([email])
   @@index([role])
@@ -101,34 +150,48 @@ model User {
 /// MemberProfile - stores ONLY the member's own professional data
 /// NO contact storage, NO social graph, NO inferred relationships
 model MemberProfile {
-  id                String          @id @default(cuid())
-  userId            String          @unique
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Professional info - ONLY the member's own data
   skills            String[]        @default([])
+  primarySkills     String[]        @default([]) // Top skills for matching priority
   pastCompanies     String[]        @default([])
   domains           String[]        @default([])
+  industries        String[]        @default([]) // Industry classifications
   experienceLevel   ExperienceLevel @default(MID)
   yearsOfExperience Int             @default(0)
+  seniorityScore    Float           @default(0) // Computed seniority for matching
   currentCompany    String?
   currentTitle      String?
   location          String?
+  timezone          String?
+
+  // LinkedIn
+  linkedinUrl String?
 
   // Preferences for referral matching
-  preferredDomains  String[]        @default([])
-  preferredRoles    String[]        @default([])
-  isOpenToRefer     Boolean         @default(true)
+  preferredDomains String[] @default([])
+  preferredRoles   String[] @default([])
+  isOpenToRefer    Boolean  @default(true)
 
   // Preferences JSON for extensibility
-  preferences       Json            @default("{}")
+  preferences  Json  @default("{}")
+  networkPrefs Json? // { relativesInTech, collegeJuniors, bootcampGrads }
 
   // Profile completeness tracking
-  profileCompleteness Int           @default(0) // 0-100 percentage
-  lastRefreshedAt   DateTime?       // For cron job refresh tracking
+  profileCompleteness Int       @default(0) // 0-100 percentage
+  lastRefreshedAt     DateTime? // For cron job refresh tracking
+  lastSynced          DateTime? // Last sync from LinkedIn
 
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations for matching & nudge system
+  embedding   MemberEmbedding?
+  matchScores MatchScore[]
+  nudgeLogs   NudgeLog[]
 
   @@index([experienceLevel])
   @@index([isOpenToRefer])
@@ -144,28 +207,35 @@ model Job {
   company         String
   description     String          @db.Text
   domain          String          @default("general") // Primary domain for matching
+  industry        String? // Industry classification
   location        String?
   isRemote        Boolean         @default(false)
   salaryMin       Int?
   salaryMax       Int?
   salaryCurrency  String          @default("USD")
   experienceLevel ExperienceLevel @default(MID)
+  minExperience   Int? // Minimum years of experience
+  maxExperience   Int? // Maximum years of experience
   isActive        Boolean         @default(true)
   closingDate     DateTime?
   viewCount       Int             @default(0) // Track job views
   referralCount   Int             @default(0) // Track referrals made
+  sourceUrl       String? // Original job posting URL
 
   // Creator relation
-  createdById     String
-  createdBy       User            @relation("CreatedJobs", fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation("CreatedJobs", fields: [createdById], references: [id])
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  jobTag          JobTag?
-  referrals       Referral[]
-  events          Event[]         @relation("JobEvents")
+  jobTag       JobTag?
+  jobEmbedding JobEmbedding?
+  referrals    Referral[]
+  matchScores  MatchScore[]
+  nudgeLogs    NudgeLog[]
+  events       Event[]       @relation("JobEvents")
 
   @@index([isActive])
   @@index([company])
@@ -179,39 +249,46 @@ model Job {
 /// JobTag model - parsed/extracted data from job descriptions
 /// Supports both rule-based parsing and optional GenAI enhancement
 model JobTag {
-  id               String          @id @default(cuid())
-  jobId            String          @unique
-  job              Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id    String @id @default(cuid())
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   // Parsed/extracted data from job description
-  skills           String[]        @default([])
-  domains          String[]        @default([])
-  keywords         String[]        @default([])
-  experienceLevel  ExperienceLevel @default(MID)
-  seniorityTerms   String[]        @default([])
-  techStack        String[]        @default([])
-  benefits         String[]        @default([])
-  softSkills       String[]        @default([])
-  certifications   String[]        @default([])
-  educationLevel   String?         // e.g., "Bachelor's", "Master's"
+  skills          String[]        @default([])
+  requiredSkills  String[]        @default([]) // Must-have skills
+  preferredSkills String[]        @default([]) // Nice-to-have skills
+  domains         String[]        @default([])
+  industry        String? // Primary industry
+  subDomain       String? // Specific sub-domain
+  keywords        String[]        @default([])
+  experienceLevel ExperienceLevel @default(MID)
+  seniorityLevel  String? // e.g., "Senior", "Lead", "Manager"
+  seniorityTerms  String[]        @default([]) // Seniority indicator terms found
+  techStack       String[]        @default([])
+  benefits        String[]        @default([])
+  softSkills      String[]        @default([])
+  certifications  String[]        @default([])
+  educationLevel  String? // e.g., "Bachelor's", "Master's"
+  targetCompanies String[]        @default([]) // Companies to target for sourcing
 
   // Matching weights for nudge engine
-  skillWeight      Float           @default(1.0)
-  domainWeight     Float           @default(1.0)
-  experienceWeight Float           @default(1.0)
+  skillWeight      Float @default(1.0)
+  domainWeight     Float @default(1.0)
+  experienceWeight Float @default(1.0)
 
   // Metadata for parsing
-  parserVersion    String          @default("v1")
-  parsedAt         DateTime        @default(now())
-  isManuallyEdited Boolean         @default(false)
-  aiEnhanced       Boolean         @default(false) // Flag if GenAI was used
-  parsingConfidence Float          @default(1.0)   // 0.0 - 1.0 confidence score
+  parserVersion     String      @default("v1")
+  parseSource       ParseSource @default(NLP) // NLP, AI, or MANUAL
+  parsedAt          DateTime    @default(now())
+  isManuallyEdited  Boolean     @default(false)
+  aiEnhanced        Boolean     @default(false) // Flag if GenAI was used
+  parsingConfidence Float       @default(1.0) // 0.0 - 1.0 confidence score
 
   // Raw AI response storage (for debugging/auditing)
-  aiRawResponse    Json?
+  aiRawResponse Json?
 
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([skills])
   @@index([domains])
@@ -221,46 +298,49 @@ model JobTag {
 /// Referral model - tracks referrals made by members
 /// Composite unique index prevents duplicate referrals
 model Referral {
-  id                String          @id @default(cuid())
-  jobId             String
-  job               Job             @relation(fields: [jobId], references: [id])
-  referrerId        String
-  referrer          User            @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+  id         String @id @default(cuid())
+  jobId      String
+  job        Job    @relation(fields: [jobId], references: [id])
+  referrerId String
+  referrer   User   @relation("ReferrerReferrals", fields: [referrerId], references: [id])
 
   // Candidate info (entered by referrer)
   candidateName     String
   candidateEmail    String
   candidatePhone    String?
   candidateLinkedIn String?
-  candidateResume   String?         // URL to uploaded resume
+  candidateResume   String? // URL to uploaded resume
 
   // Relationship context - for explainable nudges
-  relationType      RelationType
-  relationshipNote  String?         @db.Text
-  howLongKnown      String?         // e.g., "2 years", "5+ years"
-  workedTogether    Boolean         @default(false)
-  workedTogetherAt  String?         // Company name where they worked together
+  relationType     RelationType
+  relationshipNote String?      @db.Text
+  howLongKnown     String? // e.g., "2 years", "5+ years"
+  workedTogether   Boolean      @default(false)
+  workedTogetherAt String? // Company name where they worked together
 
   // Referral details
-  referralNote      String?         @db.Text
-  whyGoodFit        String?         @db.Text
-  nudgeUsed         String?         // Which nudge prompted this referral
+  referralNote String? @db.Text
+  whyGoodFit   String? @db.Text
+  nudgeUsed    String? // Which nudge prompted this referral
 
   // Status tracking
-  status            ReferralStatus  @default(DRAFT)
-  statusHistory     Json            @default("[]") // Array of status changes
-  submittedAt       DateTime?
-  lastStatusChange  DateTime?
-  reviewedBy        String?         // User ID of reviewer
-  reviewNotes       String?         @db.Text
+  status           ReferralStatus @default(DRAFT)
+  statusHistory    Json           @default("[]") // Array of status changes
+  submittedAt      DateTime?
+  lastStatusChange DateTime?
+  reviewedBy       String? // User ID of reviewer
+  reviewNotes      String?        @db.Text
 
   // Outcome tracking
-  hiredAt           DateTime?
-  rejectedAt        DateTime?
-  rejectionReason   String?
+  hiredAt         DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
 
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Activity tracking
+  activities ReferralActivity[]
 
   // Prevent duplicate referrals for same job + candidate email
   @@unique([jobId, candidateEmail])
@@ -274,25 +354,25 @@ model Referral {
 /// Event model - analytics and activity tracking
 /// Supports all required event types for analytics
 model Event {
-  id          String      @id @default(cuid())
-  type        EventType
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
+  id     String    @id @default(cuid())
+  type   EventType
+  userId String
+  user   User      @relation(fields: [userId], references: [id])
 
   // Flexible metadata storage
-  metadata    Json        @default("{}")
+  metadata Json @default("{}")
 
   // Common references (nullable for flexibility)
-  jobId       String?
-  job         Job?        @relation("JobEvents", fields: [jobId], references: [id])
-  referralId  String?
+  jobId      String?
+  job        Job?    @relation("JobEvents", fields: [jobId], references: [id])
+  referralId String?
 
   // Session tracking
-  sessionId   String?     // For grouping events in a session
-  ipHash      String?     // Hashed IP for fraud detection (privacy-safe)
-  userAgent   String?     // Browser/device info
+  sessionId String? // For grouping events in a session
+  ipHash    String? // Hashed IP for fraud detection (privacy-safe)
+  userAgent String? // Browser/device info
 
-  createdAt   DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   @@index([type])
   @@index([userId])
@@ -308,25 +388,25 @@ model Event {
 /// NudgeTemplate model - stores configurable nudge templates
 /// Allows human-editing and versioning of nudge messages
 model NudgeTemplate {
-  id              String    @id @default(cuid())
-  name            String    @unique // e.g., "skill_match", "company_match"
-  category        String    // e.g., "professional", "personal", "educational"
-  template        String    @db.Text // Template with placeholders: "People you've worked with on {{skills}}"
-  description     String?   @db.Text
-  isActive        Boolean   @default(true)
-  priority        Int       @default(0) // Higher priority = shown first
+  id          String  @id @default(cuid())
+  name        String  @unique // e.g., "skill_match", "company_match"
+  category    String // e.g., "professional", "personal", "educational"
+  template    String  @db.Text // Template with placeholders: "People you've worked with on {{skills}}"
+  description String? @db.Text
+  isActive    Boolean @default(true)
+  priority    Int     @default(0) // Higher priority = shown first
 
   // Matching criteria
-  matchField      String    // e.g., "skills", "pastCompanies", "domains"
-  minMatchCount   Int       @default(1) // Minimum matches required
+  matchField    String // e.g., "skills", "pastCompanies", "domains"
+  minMatchCount Int    @default(1) // Minimum matches required
 
   // Metadata
-  version         Int       @default(1)
-  createdBy       String?
-  lastEditedBy    String?
+  version      Int     @default(1)
+  createdBy    String?
+  lastEditedBy String?
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
   @@index([category])
@@ -336,23 +416,23 @@ model NudgeTemplate {
 /// MessageTemplate model - stores message copy variations
 /// For GenAI-assisted message generation with human editing
 model MessageTemplate {
-  id              String    @id @default(cuid())
-  name            String    @unique
-  type            String    // e.g., "referral_request", "follow_up", "introduction"
-  subject         String?   // For email templates
-  body            String    @db.Text
-  isActive        Boolean   @default(true)
-  isAiGenerated   Boolean   @default(false)
+  id            String  @id @default(cuid())
+  name          String  @unique
+  type          String // e.g., "referral_request", "follow_up", "introduction"
+  subject       String? // For email templates
+  body          String  @db.Text
+  isActive      Boolean @default(true)
+  isAiGenerated Boolean @default(false)
 
   // Placeholders documentation
-  placeholders    String[]  @default([]) // e.g., ["{{candidate_name}}", "{{job_title}}"]
+  placeholders String[] @default([]) // e.g., ["{{candidate_name}}", "{{job_title}}"]
 
   // A/B testing support
-  variantOf       String?   // ID of the original template
-  variantName     String?   // e.g., "A", "B", "casual", "formal"
+  variantOf   String? // ID of the original template
+  variantName String? // e.g., "A", "B", "casual", "formal"
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([type])
   @@index([isActive])
@@ -361,17 +441,170 @@ model MessageTemplate {
 /// CronJobLog model - tracks cron job executions
 /// For monitoring and debugging automated tasks
 model CronJobLog {
-  id              String    @id @default(cuid())
-  jobName         String    // e.g., "refresh-member-profiles", "job-closing-reminders"
-  status          String    // "started", "completed", "failed"
-  startedAt       DateTime  @default(now())
-  completedAt     DateTime?
-  duration        Int?      // Duration in milliseconds
-  recordsProcessed Int      @default(0)
-  errorMessage    String?   @db.Text
-  metadata        Json      @default("{}")
+  id               String    @id @default(cuid())
+  jobName          String // e.g., "refresh-member-profiles", "job-closing-reminders"
+  status           String // "started", "completed", "failed"
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  duration         Int? // Duration in milliseconds
+  recordsProcessed Int       @default(0)
+  errorMessage     String?   @db.Text
+  metadata         Json      @default("{}")
 
   @@index([jobName])
   @@index([status])
   @@index([startedAt])
+}
+
+// ============================================
+// MATCHING & SCORING MODELS
+// ============================================
+
+/// MemberEmbedding - vector embeddings for similarity matching
+model MemberEmbedding {
+  id       String        @id @default(cuid())
+  memberId String        @unique
+  member   MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  // Embedding Vectors (stored as JSON arrays for flexibility)
+  skillVector      Float[] // 1536 dimensions (OpenAI text-embedding-3-small)
+  industryVector   Float[]
+  experienceVector Float[]
+  combinedVector   Float[] // Weighted combination of all vectors
+
+  // Metadata
+  modelVersion String   @default("v1")
+  generatedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([memberId])
+}
+
+/// JobEmbedding - vector embeddings for job similarity
+model JobEmbedding {
+  id    String @id @default(cuid())
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Embedding Vectors
+  titleVector       Float[]
+  descriptionVector Float[]
+  skillsVector      Float[]
+  combinedVector    Float[]
+
+  // Metadata
+  modelVersion String   @default("v1")
+  generatedAt  DateTime @default(now())
+
+  @@index([jobId])
+}
+
+/// MatchScore - pre-computed match scores between members and jobs
+model MatchScore {
+  id       String        @id @default(cuid())
+  memberId String
+  member   MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  jobId    String
+  job      Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Overall Score
+  overallScore Float // 0-100
+  tier         MatchTier
+
+  // Score Breakdown
+  skillOverlap      Float @default(0)
+  companyOverlap    Float @default(0)
+  industryOverlap   Float @default(0)
+  seniorityMatch    Float @default(0)
+  locationProximity Float @default(0)
+  domainSimilarity  Float @default(0)
+
+  // Explanation
+  reasons       Json     @default("[]") // Array of { type, weight, score, explanation }
+  topInferences String[] @default([])
+
+  // Metadata
+  calculatedAt DateTime  @default(now())
+  expiresAt    DateTime?
+  version      String    @default("v1")
+
+  @@unique([memberId, jobId])
+  @@index([memberId])
+  @@index([jobId])
+  @@index([overallScore])
+  @@index([tier])
+}
+
+// ============================================
+// NUDGE TRACKING MODELS
+// ============================================
+
+/// NudgeLog - track nudges shown to members
+model NudgeLog {
+  id       String        @id @default(cuid())
+  memberId String
+  member   MemberProfile @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  jobId    String
+  job      Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Nudge Content
+  nudgeType    NudgeType
+  nudgeContent Json // { headline, body, cta, inferences }
+  templateUsed String?
+
+  // Score Context
+  matchScore     Float
+  matchTier      MatchTier
+  reasonsSummary String[]  @default([])
+
+  // Timestamps
+  shownAt     DateTime  @default(now())
+  clickedAt   DateTime?
+  dismissedAt DateTime?
+
+  // A/B Testing
+  variant      String?
+  experimentId String?
+
+  // Relations
+  interactions NudgeInteraction[]
+
+  @@index([memberId])
+  @@index([jobId])
+  @@index([shownAt])
+  @@index([variant])
+  @@index([nudgeType])
+}
+
+/// NudgeInteraction - granular interaction tracking for nudges
+model NudgeInteraction {
+  id         String   @id @default(cuid())
+  nudgeLogId String
+  nudgeLog   NudgeLog @relation(fields: [nudgeLogId], references: [id], onDelete: Cascade)
+
+  action    InteractionAction
+  metadata  Json? // { button, position, timeOnPage }
+  timestamp DateTime          @default(now())
+
+  @@index([nudgeLogId])
+  @@index([action])
+}
+
+// ============================================
+// REFERRAL TRACKING
+// ============================================
+
+/// ReferralActivity - activity log for referral status changes
+model ReferralActivity {
+  id         String   @id @default(cuid())
+  referralId String
+  referral   Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  action      String
+  details     String?  @db.Text
+  performedBy String?
+  timestamp   DateTime @default(now())
+
+  @@index([referralId])
+  @@index([action])
 }

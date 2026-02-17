@@ -174,7 +174,7 @@ export async function getEventCountsByJob(jobId: string): Promise<JobEventStats>
       by: ["userId"],
       where: { jobId, type: EventType.JOB_VIEWED },
     }),
-    prisma.event.count({ where: { jobId, type: EventType.NUDGES_SHOWN } }),
+    prisma.event.count({ where: { jobId, type: EventType.NUDGE_SHOWN } }),
     prisma.event.count({ where: { jobId, type: EventType.REFERRAL_STARTED } }),
     prisma.event.count({ where: { jobId, type: EventType.REFERRAL_SUBMITTED } }),
     prisma.event.count({ where: { jobId, type: EventType.MESSAGE_COPIED } }),
@@ -262,7 +262,7 @@ export const trackNudgesShown = (
   nudgeCategories: string[]
 ) =>
   createEvent({
-    type: EventType.NUDGES_SHOWN,
+    type: EventType.NUDGE_SHOWN,
     userId,
     jobId,
     metadata: { nudgeCount, nudgeCategories, shownAt: new Date().toISOString() },

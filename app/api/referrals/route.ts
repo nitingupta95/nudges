@@ -1,135 +1,210 @@
+/**
+ * @swagger
+ * /api/referrals:
+ *   get:
+ *     summary: List all referrals for the authenticated user
+ *     tags: [Referrals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, DRAFT, SUBMITTED, VIEWED, UNDER_REVIEW, SHORTLISTED, INTERVIEWING, OFFERED, HIRED, REJECTED, WITHDRAWN]
+ *         description: Filter by status
+ *       - in: query
+ *         name: jobId
+ *         schema:
+ *           type: string
+ *         description: Filter by job ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: List of referrals
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 referrals:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Referral'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a new referral
+ *     tags: [Referrals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateReferralInput'
+ *     responses:
+ *       201:
+ *         description: Referral created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 referral:
+ *                   $ref: '#/components/schemas/Referral'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       409:
+ *         description: Referral already exists
+ *   patch:
+ *     summary: Update a referral status
+ *     tags: [Referrals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - referralId
+ *               - status
+ *             properties:
+ *               referralId:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *               reviewNotes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Referral updated
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Referral not found
+ *   delete:
+ *     summary: Delete a referral
+ *     tags: [Referrals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: referralId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Referral deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Referral not found
+ */
+
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/middleware/auth.middleware";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit.middleware";
 import {
-  createReferral,
-  listReferrals,
-  updateReferralStatus,
-  getReferralById,
-  deleteReferral,
-  getReferralAnalytics,
-} from "@/services/referrals/referrals.service";  
-import { ReferralStatus, RelationType } from "@/types/enums";
+  listReferralsController,
+  createReferralController,
+  updateReferralController,
+  deleteReferralController,
+} from "@/controllers/referral.controller";
 
 /**
  * GET: List all referrals for a user
  */
 export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-
-    const userId = searchParams.get("userId");
-    const statusParam = searchParams.get("status");
-    const status = statusParam ? (statusParam.toUpperCase() as any) : undefined;
-    const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : 50;
-    const offset = searchParams.get("offset") ? parseInt(searchParams.get("offset")!) : 0;
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
-    }
-
-    const referrals = await listReferrals(userId, { status, limit, offset });
-
-    return NextResponse.json({ referrals });
-  } catch (error) {
-    console.error("Error listing referrals:", error);
-    return NextResponse.json({ error: "Failed to fetch referrals" }, { status: 500 });
-  }
+  return withAuth(req, async (request, user) => {
+    return withRateLimit(
+      request,
+      RATE_LIMITS.READ,
+      () => listReferralsController(request, user),
+      user.id
+    );
+  });
 }
 
 /**
  * POST: Create a new referral
  */
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-
-    const {
-      userId,
-      jobId,
-      relation,
-      candidateName,
-      candidateEmail,
-      candidatePhone,
-      referralNote,
-    } = body;
-
-    if (!userId || !jobId || !relation || !candidateName || !candidateEmail) {
-      return NextResponse.json(
-        { error: "userId, jobId, relation, candidateName, and candidateEmail are required" },
-        { status: 400 }
-      );
-    }
-
-    if (!Object.values(RelationType).includes(relation)) {
-      return NextResponse.json({ error: "Invalid relation type" }, { status: 400 });
-    }
-
-    const referral = await createReferral(
-      userId,
-      jobId,
-      relation,
-      candidateName,
-      candidateEmail,
-      candidatePhone,
-      referralNote
+  return withAuth(req, async (request, user) => {
+    return withRateLimit(
+      request,
+      RATE_LIMITS.WRITE,
+      () => createReferralController(request, user),
+      user.id
     );
-
-    return NextResponse.json({ referral }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating referral:", error);
-    if (error instanceof Error && error.message.includes("already exists")) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    return NextResponse.json({ error: "Failed to create referral" }, { status: 500 });
-  }
+  });
 }
 
 /**
  * PATCH: Update the status of a referral
  */
 export async function PATCH(req: Request) {
-  try {
-    const body = await req.json();
-
-    const { referralId, newStatus, updatedBy, note } = body;
-
-    if (!referralId || !newStatus || !updatedBy) {
+  return withAuth(req, async (request, user) => {
+    const body = await request.clone().json();
+    const referralId = body.referralId;
+    
+    if (!referralId) {
       return NextResponse.json(
-        { error: "referralId, newStatus, and updatedBy are required" },
+        { error: "referralId is required", code: "VALIDATION_ERROR" },
         { status: 400 }
       );
     }
 
-    if (!Object.values(ReferralStatus).includes(newStatus)) {
-      return NextResponse.json({ error: "Invalid referral status" }, { status: 400 });
-    }
-
-    const updatedReferral = await updateReferralStatus(referralId, newStatus, updatedBy, note);
-
-    return NextResponse.json({ referral: updatedReferral });
-  } catch (error) {
-    console.error("Error updating referral status:", error);
-    return NextResponse.json({ error: "Failed to update referral status" }, { status: 500 });
-  }
+    return withRateLimit(
+      request,
+      RATE_LIMITS.WRITE,
+      () => updateReferralController(request, referralId, user),
+      user.id
+    );
+  });
 }
 
 /**
  * DELETE: Delete a referral by ID
  */
 export async function DELETE(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-
+  return withAuth(req, async (request, user) => {
+    const { searchParams } = new URL(request.url);
     const referralId = searchParams.get("referralId");
 
     if (!referralId) {
-      return NextResponse.json({ error: "Referral ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Referral ID is required", code: "VALIDATION_ERROR" },
+        { status: 400 }
+      );
     }
 
-    await deleteReferral(referralId);
-
-    return NextResponse.json({ message: "Referral deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting referral:", error);
-    return NextResponse.json({ error: "Failed to delete referral" }, { status: 500 });
-  }
+    return withRateLimit(
+      request,
+      RATE_LIMITS.WRITE,
+      () => deleteReferralController(referralId, user),
+      user.id
+    );
+  });
 }
