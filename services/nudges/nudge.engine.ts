@@ -1,14 +1,5 @@
 import { Job, MemberProfile } from "@/lib/generated/prisma/client";
-import OpenAI from "openai";
-
-/**
- * AI Service for referral nudge generation
- */
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
-  : null;
+import { getOpenAIClient, isOpenAIConfigured } from "@/services/ai";
 
 export interface NudgeResult {
   nudges: string[];
@@ -23,6 +14,7 @@ async function generateAINudges(
   job: Job,
   profile: MemberProfile
 ): Promise<string[]> {
+  const openai = getOpenAIClient();
   if (!openai) {
     throw new Error("OpenAI not configured");
   }
@@ -161,7 +153,7 @@ export async function generateNudges(
   profile: MemberProfile
 ): Promise<NudgeResult> {
   // Try AI generation with timeout
-  if (openai) {
+  if (isOpenAIConfigured()) {
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("AI request timeout")), 5000)
@@ -189,7 +181,7 @@ export async function generateNudges(
   return {
     nudges,
     source: "dummy",
-    explain: openai
+    explain: isOpenAIConfigured()
       ? "AI temporarily unavailable - showing example suggestions"
       : "AI not configured - showing example suggestions",
   };

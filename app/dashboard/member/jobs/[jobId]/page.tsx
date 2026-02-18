@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchJob } from "@/lib/api";
+import { fetchJob, trackEvent } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { format, parseISO, differenceInDays, formatDistanceToNow } from "date-fns";
 import {
@@ -51,6 +51,24 @@ export default function JobDetail() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const hasTrackedView = useRef(false);
+
+  // Track job view event
+  useEffect(() => {
+    if (job && user && !hasTrackedView.current) {
+      hasTrackedView.current = true;
+      trackEvent({
+        type: "JOB_VIEWED",
+        userId: user.id,
+        jobId: job.id,
+        metadata: {
+          source: "job_detail_page",
+          jobTitle: job.title,
+          company: typeof job.company === "string" ? job.company : job.company?.name,
+        },
+      });
+    }
+  }, [job, user]);
 
   const isLongDesc = useMemo(
     () => (job?.description?.length || 0) > DESC_COLLAPSE_LENGTH,

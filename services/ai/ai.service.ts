@@ -18,6 +18,21 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
 
+/**
+ * Get the shared OpenAI client instance.
+ * Returns null if OpenAI API key is not configured.
+ */
+export function getOpenAIClient(): OpenAI | null {
+  return openai;
+}
+
+/**
+ * Check if OpenAI is configured and available.
+ */
+export function isOpenAIConfigured(): boolean {
+  return openai !== null;
+}
+
 // ============================================
 // TYPES & INTERFACES
 // ============================================
@@ -353,18 +368,52 @@ function generateStaticJobParse(
 // 2. SEMANTIC EMBEDDINGS
 // ============================================
 
+/**
+ * Generate a deterministic static vector as fallback when OpenAI is unavailable.
+ * Uses a simple hash-based approach to create consistent vectors for the same input.
+ */
+function generateStaticVector(text: string, dimensions: number = 1536): number[] {
+  const vector = new Array(dimensions).fill(0);
+  const words = text.toLowerCase().split(/\s+/);
+  
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    for (let j = 0; j < word.length; j++) {
+      const charCode = word.charCodeAt(j);
+      const idx = (i * 31 + j * 17 + charCode) % dimensions;
+      vector[idx] += (charCode - 96) / 26; // Normalize to ~0-1
+    }
+  }
+  
+  // Normalize the vector
+  const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
+  if (magnitude > 0) {
+    for (let i = 0; i < dimensions; i++) {
+      vector[i] /= magnitude;
+    }
+  }
+  
+  return vector;
+}
+
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!openai) {
-    throw new Error("OpenAI API key not configured for embeddings");
+    console.warn("OpenAI not configured, using static vector fallback for embeddings");
+    return generateStaticVector(text, 1536);
   }
 
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: truncateText(text, 8000),
-    encoding_format: "float",
-  });
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: truncateText(text, 8000),
+      encoding_format: "float",
+    });
 
-  return response.data[0].embedding;
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Embedding generation failed, using fallback:", error);
+    return generateStaticVector(text, 1536);
+  }
 }
 
 export async function generateProfileEmbedding(profile: {
@@ -374,10 +423,6 @@ export async function generateProfileEmbedding(profile: {
   pastCompanies: string[];
   domains: string[];
 }): Promise<ProfileEmbedding> {
-  if (!openai) {
-    throw new Error("OpenAI API key not configured for embeddings");
-  }
-
   const texts = {
     skills: profile.skills.join(", "),
     experience: `${profile.currentTitle || "Professional"} at ${profile.currentCompany || "Company"}. Previously: ${profile.pastCompanies.join(", ") || "Various companies"}`,

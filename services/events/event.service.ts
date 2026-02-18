@@ -244,6 +244,92 @@ export async function getUsersWhoViewedButDidntRefer(jobId: string): Promise<str
 }
 
 // ============================================
+// FUNNEL METRICS
+// ============================================
+
+export interface FunnelMetrics {
+  jobViews: number;
+  uniqueJobViewers: number;
+  nudgesShown: number;
+  nudgesClicked: number;
+  referralsStarted: number;
+  referralsSubmitted: number;
+  // Conversion rates
+  viewToNudgeRate: number;
+  nudgeClickRate: number;
+  clickToStartRate: number;
+  startToSubmitRate: number;
+  overallConversionRate: number;
+  // Time-based metrics
+  period: { startDate: Date; endDate: Date };
+}
+
+export async function getFunnelMetrics(
+  startDate: Date,
+  endDate: Date,
+  jobId?: string
+): Promise<FunnelMetrics> {
+  const baseWhere = {
+    createdAt: { gte: startDate, lte: endDate },
+    ...(jobId && { jobId }),
+  };
+
+  const [
+    jobViews,
+    uniqueJobViewers,
+    nudgesShown,
+    nudgesClicked,
+    referralsStarted,
+    referralsSubmitted,
+  ] = await Promise.all([
+    prisma.event.count({ where: { ...baseWhere, type: EventType.JOB_VIEWED } }),
+    prisma.event.groupBy({
+      by: ["userId"],
+      where: { ...baseWhere, type: EventType.JOB_VIEWED },
+    }).then((r) => r.length),
+    prisma.event.count({ where: { ...baseWhere, type: EventType.NUDGE_SHOWN } }),
+    prisma.event.count({ where: { ...baseWhere, type: EventType.NUDGE_CLICKED } }),
+    prisma.event.count({ where: { ...baseWhere, type: EventType.REFERRAL_STARTED } }),
+    prisma.event.count({ where: { ...baseWhere, type: EventType.REFERRAL_SUBMITTED } }),
+  ]);
+
+  return {
+    jobViews,
+    uniqueJobViewers,
+    nudgesShown,
+    nudgesClicked,
+    referralsStarted,
+    referralsSubmitted,
+    // Conversion rates (as percentages)
+    viewToNudgeRate: jobViews > 0 ? (nudgesShown / jobViews) * 100 : 0,
+    nudgeClickRate: nudgesShown > 0 ? (nudgesClicked / nudgesShown) * 100 : 0,
+    clickToStartRate: nudgesClicked > 0 ? (referralsStarted / nudgesClicked) * 100 : 0,
+    startToSubmitRate: referralsStarted > 0 ? (referralsSubmitted / referralsStarted) * 100 : 0,
+    overallConversionRate: jobViews > 0 ? (referralsSubmitted / jobViews) * 100 : 0,
+    period: { startDate, endDate },
+  };
+}
+
+export async function getFunnelMetricsByJob(
+  jobId: string,
+  days: number = 30
+): Promise<FunnelMetrics> {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  return getFunnelMetrics(startDate, endDate, jobId);
+}
+
+export async function getOverallFunnelMetrics(days: number = 30): Promise<FunnelMetrics> {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  return getFunnelMetrics(startDate, endDate);
+}
+
+// ============================================
 // TRACKERS
 // ============================================
 

@@ -59,6 +59,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { EmailComposerDialog } from "@/components/email/email-composer-dialog";
 
 // Referral status configuration
 const REFERRAL_STATUSES = [
@@ -107,6 +108,13 @@ export default function RecruiterReferrals() {
   const [newStatus, setNewStatus] = useState("");
   const [reviewNotes, setReviewNotes] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailTargetReferral, setEmailTargetReferral] = useState<Referral | null>(null);
+
+  const openEmailDialog = (referral: Referral) => {
+    setEmailTargetReferral(referral);
+    setEmailDialogOpen(true);
+  };
 
   // Fetch referrals for recruiter's jobs
   const fetchReferrals = async () => {
@@ -380,11 +388,9 @@ export default function RecruiterReferrals() {
                               </Link>
                             </DropdownMenuItem>
                             {referral.candidateEmail && (
-                              <DropdownMenuItem asChild>
-                                <a href={`mailto:${referral.candidateEmail}`}>
-                                  <Mail className="h-4 w-4 mr-2" />
-                                  Email Candidate
-                                </a>
+                              <DropdownMenuItem onClick={() => openEmailDialog(referral)}>
+                                <Mail className="h-4 w-4 mr-2" />
+                                Email Candidate
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -530,11 +536,13 @@ export default function RecruiterReferrals() {
                             </Link>
                           </Button>
                           {referral.candidateEmail && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={`mailto:${referral.candidateEmail}`}>
-                                <Mail className="h-4 w-4 mr-1" />
-                                Contact Candidate
-                              </a>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => openEmailDialog(referral)}
+                            >
+                              <Mail className="h-4 w-4 mr-1" />
+                              Contact Candidate
                             </Button>
                           )}
                         </div>
@@ -600,6 +608,18 @@ export default function RecruiterReferrals() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Email Composer Dialog */}
+      <EmailComposerDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        referralId={emailTargetReferral?.id || ""}
+        candidateName={emailTargetReferral?.candidateName || ""}
+        candidateEmail={emailTargetReferral?.candidateEmail || ""}
+        jobTitle={emailTargetReferral?.jobTitle || ""}
+        companyName={emailTargetReferral?.companyName || ""}
+        currentStatus={emailTargetReferral?.status}
+      />
     </PageLayout>
   );
 }

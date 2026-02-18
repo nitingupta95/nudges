@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { checkBudget, getDailyUsageSummary, AI_COST_CONFIG } from "@/services/ai/ai.budget.service";
-import { getCacheStats } from "@/services/ai/ai.cache.serivce";
+import { getCacheStats } from "@/services/ai/ai.cache.service";
 
 export async function GET() {
   const budget = checkBudget();

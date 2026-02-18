@@ -60,11 +60,11 @@ export async function createReferral(
  * List all referrals for a specific user.
  * For members: returns referrals they've made
  * For recruiters: returns referrals for jobs they created
- * Supports optional filtering by referral status.
+ * Supports optional filtering by referral status and jobId.
  */
 export async function listReferrals(
   userId: string,
-  options?: { status?: ReferralStatus; limit?: number; offset?: number; role?: string }
+  options?: { status?: ReferralStatus; jobId?: string; limit?: number; offset?: number; role?: string }
 ) {
   // Check if user is a recruiter - if so, show referrals for their jobs
   const user = await prisma.user.findUnique({
@@ -85,12 +85,22 @@ export async function listReferrals(
       // Exclude drafts for recruiters - they should only see submitted referrals
       status: options?.status ?? { not: 'DRAFT' },
     };
+    
+    // Filter by specific job if provided
+    if (options?.jobId) {
+      where.jobId = options.jobId;
+    }
   } else {
     // For members: get referrals they've made
     where = {
       referrerId: userId,
       status: options?.status ?? undefined,
     };
+    
+    // Filter by specific job if provided
+    if (options?.jobId) {
+      where.jobId = options.jobId;
+    }
   }
 
   return prisma.referral.findMany({

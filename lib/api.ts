@@ -104,7 +104,9 @@ function filterMockJobs(jobs: Job[], filters?: JobFilters): Job[] {
     filtered = filtered.filter(
       (j) =>
         j.title.toLowerCase().includes(searchLower) ||
-        j.company.name?.toLowerCase().includes(searchLower) ||
+        (typeof j.company === 'string' 
+          ? j.company.toLowerCase().includes(searchLower)
+          : j.company.name?.toLowerCase().includes(searchLower)) ||
         j.description?.toLowerCase().includes(searchLower)
     );
   }

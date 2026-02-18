@@ -68,6 +68,7 @@ import {
   Star,
 } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
+import { EmailComposerDialog } from "@/components/email/email-composer-dialog";
 import { PageLayout } from "@/components/layout/page-layout";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-contex";
@@ -122,6 +123,13 @@ export default function RecruiterJobDetail() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loadingReferrals, setLoadingReferrals] = useState(false);
   const [expandedReferral, setExpandedReferral] = useState<string | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailTargetReferral, setEmailTargetReferral] = useState<Referral | null>(null);
+
+  const openEmailDialog = (referral: Referral) => {
+    setEmailTargetReferral(referral);
+    setEmailDialogOpen(true);
+  };
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -777,11 +785,13 @@ export default function RecruiterJobDetail() {
                               </Select>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={`mailto:${referral.candidateEmail}`}>
-                                  <Mail className="h-4 w-4 mr-2" />
-                                  Email
-                                </a>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => openEmailDialog(referral)}
+                              >
+                                <Mail className="h-4 w-4 mr-2" />
+                                Email
                               </Button>
                             </div>
                           </div>
@@ -829,6 +839,18 @@ export default function RecruiterJobDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Email Composer Dialog */}
+      <EmailComposerDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        referralId={emailTargetReferral?.id || ""}
+        candidateName={emailTargetReferral?.candidateName || ""}
+        candidateEmail={emailTargetReferral?.candidateEmail || ""}
+        jobTitle={job?.title || ""}
+        companyName={typeof job?.company === "string" ? job.company : job?.company?.name || ""}
+        currentStatus={emailTargetReferral?.status}
+      />
     </PageLayout>
   );
 }

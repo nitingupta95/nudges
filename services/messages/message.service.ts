@@ -30,7 +30,7 @@ export interface GeneratedMessage {
 
 export interface MessageGeneratorResult {
   message: GeneratedMessage;
-  source: 'ai' | 'template';
+  source: 'ai' | 'template' | 'static';
 }
 
 // ============================================
@@ -390,13 +390,12 @@ export async function generateAIMessage(
     // Generate share links
     const shareLinks = generateShareLinks(bodyWithUrl, jobUrl);
 
-    // Log the message generation
-    await prisma.messageEvent.create({
+    // Log the message generation as an event
+    await prisma.event.create({
       data: {
-        memberId: member.id,
+        userId: member.userId,
         jobId: job.id,
-        eventType: 'GENERATED',
-        templateUsed: null,
+        type: 'MESSAGE_GENERATED',
         metadata: {
           source: aiMessage.source,
           hasRecipient: !!context?.recipientName,

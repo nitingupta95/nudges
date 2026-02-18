@@ -137,6 +137,9 @@ export interface JobFilters {
   closingSoon?: boolean;
   goodFit?: boolean;
   search?: string;
+  skills?: string[];
+  limit?: number;
+  offset?: number;
 }
 
 export interface MessageTemplate {

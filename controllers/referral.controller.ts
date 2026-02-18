@@ -55,6 +55,7 @@ export async function listReferralsController(
 
     const referrals = await listReferrals(effectiveUserId || user.id, {
       status: filters.status as any,
+      jobId: filters.jobId,
       limit: filters.limit,
       offset: filters.offset,
       role: user.role,

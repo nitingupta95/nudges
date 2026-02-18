@@ -180,7 +180,27 @@ export async function getUserPreferencesController(
       throw new NotFoundError('Member profile', user.id);
     }
 
-    return successResponse({ profile });
+    // Extract preferences from profile for settings page
+    const preferences = (profile.preferences as Record<string, unknown>) || {};
+
+    return successResponse({ 
+      profile,
+      preferences: {
+        notifications: preferences.notifications || {
+          emailNewReferrals: true,
+          emailStatusUpdates: true,
+          emailWeeklyDigest: false,
+          emailJobRecommendations: true,
+          emailSystemAnnouncements: true,
+        },
+        privacy: preferences.privacy || {
+          profileVisible: true,
+          showSkillsToRecruiters: true,
+          showCompanyHistory: true,
+          allowJobRecommendations: true,
+        },
+      },
+    });
   });
 }
 
@@ -204,6 +224,12 @@ export async function updateUserPreferencesController(
       preferredRoles,
       preferredDomains,
       isOpenToRefer,
+      // New fields for settings page
+      currentTitle,
+      currentCompany,
+      location,
+      timezone,
+      preferences, // Object containing notifications, privacy, etc.
     } = body;
 
     // Validate experience level
@@ -232,12 +258,23 @@ export async function updateUserPreferencesController(
     if (experienceLevel !== undefined) updateData.experienceLevel = experienceLevel;
     if (yearsOfExperience !== undefined) updateData.yearsOfExperience = yearsOfExperience;
     if (isOpenToRefer !== undefined) updateData.isOpenToRefer = isOpenToRefer;
+    if (currentTitle !== undefined) updateData.currentTitle = currentTitle;
+    if (currentCompany !== undefined) updateData.currentCompany = currentCompany;
+    if (location !== undefined) updateData.location = location;
+    if (timezone !== undefined) updateData.timezone = timezone;
     
-    // Handle preferences object
-    if (preferredRoles !== undefined || preferredDomains !== undefined) {
+    // Handle preferences object - merge with existing preferences
+    if (preferredRoles !== undefined || preferredDomains !== undefined || preferences !== undefined) {
+      // Get existing profile to merge preferences
+      const existingProfile = await getMemberProfileByUserId(user.id);
+      const existingPrefs = (existingProfile?.preferences as Record<string, unknown>) || {};
+      
       updateData.preferences = {
+        ...existingPrefs,
         ...(preferredRoles && { preferredRoles }),
         ...(preferredDomains && { preferredDomains }),
+        ...(preferences?.notifications && { notifications: preferences.notifications }),
+        ...(preferences?.privacy && { privacy: preferences.privacy }),
       };
     }
 
