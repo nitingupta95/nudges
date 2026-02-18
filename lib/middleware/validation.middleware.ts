@@ -223,7 +223,7 @@ export const ReferralFiltersSchema = z.object({
 // ============================================
 
 export const NudgeInteractionSchema = z.object({
-  memberId: z.string().min(1),
+  memberId: z.string().optional(),
   jobId: z.string().min(1),
   nudgeId: z.string().optional(),
   action: z.enum([

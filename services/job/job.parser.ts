@@ -1,5 +1,7 @@
  
 
+import { parseJobDescriptionAI } from '@/services/ai/ai.service';
+
 // ============================================
 // TYPES
 // ============================================
@@ -336,6 +338,77 @@ export function parseJobDescription(
   };
 }
 
+/**
+ * Parse a job description using AI with static fallback
+ * Use this for better quality results when creating/updating jobs
+ */
+export async function parseJobDescriptionWithAI(
+  title: string,
+  description: string,
+  options: ParserOptions = {}
+): Promise<ParsedJobTags & { source: 'ai' | 'static' }> {
+  // If AI is explicitly disabled, use static parser
+  if (options.useGenAI === false) {
+    return { ...parseJobDescription(title, description, options), source: 'static' };
+  }
+
+  try {
+    // Try AI parsing first
+    const aiResult = await parseJobDescriptionAI(title, description);
+    
+    // Map AI result to ParsedJobTags format
+    const experienceLevel = mapSeniorityLevel(aiResult.seniorityLevel);
+    
+    return {
+      skills: [...aiResult.requiredSkills, ...aiResult.preferredSkills],
+      experienceLevel,
+      domain: aiResult.domain || 'general',
+      keywords: aiResult.keywords || [],
+      minYearsExperience: aiResult.experienceRange?.min || 0,
+      maxYearsExperience: aiResult.experienceRange?.max || 10,
+      remoteType: 'unknown', // AI doesn't return this, could be enhanced
+      employmentType: 'full-time', // Default
+      seniorityIndicators: [aiResult.seniorityLevel],
+      techStack: aiResult.techStack || [],
+      softSkills: [],
+      companyType: [],
+      confidence: aiResult.confidence || 0.9,
+      source: aiResult.source,
+    };
+  } catch (error) {
+    console.error('AI job parsing failed, falling back to static:', error);
+    // Fallback to static parsing
+    if (options.fallbackToRules !== false) {
+      return { ...parseJobDescription(title, description, options), source: 'static' };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Map AI seniority level string to ExperienceLevel enum
+ */
+function mapSeniorityLevel(level: string): ExperienceLevel {
+  const levelMap: Record<string, ExperienceLevel> = {
+    'intern': 'INTERN',
+    'entry': 'ENTRY',
+    'junior': 'ENTRY',
+    'mid': 'MID',
+    'middle': 'MID',
+    'senior': 'SENIOR',
+    'lead': 'SENIOR',
+    'staff': 'STAFF',
+    'principal': 'PRINCIPAL',
+    'architect': 'PRINCIPAL',
+    'executive': 'EXECUTIVE',
+    'director': 'EXECUTIVE',
+    'vp': 'EXECUTIVE',
+  };
+  
+  const normalized = (level || 'mid').toLowerCase();
+  return levelMap[normalized] || 'MID';
+}
+
 // ============================================
 // EXTRACTION FUNCTIONS
 // ============================================
@@ -634,31 +707,8 @@ function calculateConfidence(data: {
 }
 
 // ============================================
-// GENAI HOOKS (OPTIONAL - NOT AUTO-EXECUTED)
+// GENAI HOOKS (VALIDATION AND ENHANCEMENT)
 // ============================================
-
-/**
- * Optional hook for GenAI-based parsing
- * This is NOT auto-executed - must be explicitly called
- * Always falls back to rule-based parsing
- */
-export async function parseJobDescriptionWithAI(
-  title: string,
-  description: string,
-  _aiProvider?: string
-): Promise<ParsedJobTags | null> {
-  // Placeholder for future GenAI integration
-  // IMPORTANT: This should:
-  // 1. Never auto-execute
-  // 2. Always have human review capability
-  // 3. Fall back to rule-based parsing on failure
-  // 4. Log all AI-generated content for audit
-
-  console.log("[AI Parser] GenAI parsing not implemented - using rule-based fallback");
-
-  // Always return null to trigger rule-based fallback
-  return null;
-}
 
 /**
  * Validate and enhance AI-parsed tags with rule-based checks

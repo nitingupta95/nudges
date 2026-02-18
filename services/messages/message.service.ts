@@ -5,6 +5,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { NotFoundError } from '@/lib/middleware/error-handler.middleware';
+import { generateReferralMessage as generateAIReferralMessage } from '@/services/ai/ai.service';
 
 // ============================================
 // Types
@@ -324,16 +325,96 @@ export async function getMessageTemplates(): Promise<Array<{
 }
 
 /**
- * Generate AI-powered message (if OpenAI is configured)
- * Currently falls back to template-based generation
+ * Generate AI-powered message using OpenAI
+ * Falls back to template-based generation if AI fails
  */
 export async function generateAIMessage(
   memberId: string,
   jobId: string,
   context?: MessageContext
 ): Promise<MessageGeneratorResult> {
-  // TODO: Implement AI-powered message generation when OpenAI service is available
-  // For now, use professional template as fallback
-  console.log('AI message generation not available, using professional template');
-  return generateMessage(memberId, jobId, 'professional', context);
+  // Get member and job data
+  const [member, job] = await Promise.all([
+    prisma.memberProfile.findFirst({
+      where: { OR: [{ id: memberId }, { userId: memberId }] },
+      include: { user: { select: { name: true } } },
+    }),
+    prisma.job.findUnique({
+      where: { id: jobId },
+      include: { jobTag: true },
+    }),
+  ]);
+
+  if (!member) {
+    throw new NotFoundError('Member', memberId);
+  }
+  if (!job) {
+    throw new NotFoundError('Job', jobId);
+  }
+
+  try {
+    // Build match reason based on profile overlap
+    let matchReason = 'You might know someone great for this role';
+    const skills = member.skills?.slice(0, 5) || [];
+    const jobSkills = job.jobTag?.skills || [];
+    
+    const overlappingSkills = skills.filter(s => 
+      jobSkills.some(js => js.toLowerCase() === s.toLowerCase())
+    );
+    
+    if (overlappingSkills.length > 0) {
+      matchReason = `Your expertise in ${overlappingSkills.slice(0, 3).join(', ')} makes your network perfect for this`;
+    } else if (member.pastCompanies?.some(pc => pc.toLowerCase().includes(job.company.toLowerCase()))) {
+      matchReason = `You worked at ${job.company}, so you might know someone there`;
+    } else if (member.domains?.length > 0) {
+      matchReason = `Your ${member.domains[0]} background could help find the right candidate`;
+    }
+
+    // Generate AI message
+    const aiMessage = await generateAIReferralMessage(
+      member.user?.name || 'there',
+      {
+        title: job.title,
+        company: job.company,
+        skills: jobSkills,
+      },
+      matchReason
+    );
+
+    // Generate job URL
+    const jobUrl = job.sourceUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/member/jobs/${job.id}`;
+
+    // Append job URL to body
+    const bodyWithUrl = `${aiMessage.body}\n\n${jobUrl}`;
+
+    // Generate share links
+    const shareLinks = generateShareLinks(bodyWithUrl, jobUrl);
+
+    // Log the message generation
+    await prisma.messageEvent.create({
+      data: {
+        memberId: member.id,
+        jobId: job.id,
+        eventType: 'GENERATED',
+        templateUsed: null,
+        metadata: {
+          source: aiMessage.source,
+          hasRecipient: !!context?.recipientName,
+        },
+      },
+    });
+
+    return {
+      message: {
+        subject: aiMessage.subject,
+        body: bodyWithUrl,
+        shareLinks,
+      },
+      source: aiMessage.source,
+    };
+  } catch (error) {
+    console.error('AI message generation failed, falling back to template:', error);
+    // Fallback to professional template
+    return generateMessage(memberId, jobId, 'professional', context);
+  }
 }

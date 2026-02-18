@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ExperienceLevel } from "@/types/enums";
-import { ParsedJobTags, parseJobDescription } from "../job/job.parser";
+import { ParsedJobTags, parseJobDescription, parseJobDescriptionWithAI } from "../job/job.parser";
 import { JobTag, Prisma } from "@/lib/generated/prisma/client";
 import { Job } from "@/types";
 import { summarizeJobDescription } from "@/services/ai/ai.service";
@@ -201,8 +201,9 @@ export async function createJob(input: CreateJobInput): Promise<JobWithTags> {
     throw new Error("Only admins and recruiters can create jobs");
   }
 
-  // Parse job description to extract tags
-  const parsedTags = parseJobDescription(input.title, input.description);
+  // Parse job description to extract tags (using AI with static fallback)
+  const parsedTags = await parseJobDescriptionWithAI(input.title, input.description);
+  console.log(`[JobService] Parsed job tags using ${parsedTags.source} parser`);
 
   // Determine experience level (use provided or parsed)
   const experienceLevel = input.experienceLevel ?? parsedTags.experienceLevel;
@@ -480,12 +481,13 @@ export async function updateJob(
 
   const { reParseTags, ...updateData } = input;
 
-  // If description changed and reParseTags is true, re-parse
-  let updatedTags: ParsedJobTags | null = null;
+  // If description changed and reParseTags is true, re-parse using AI
+  let updatedTags: (ParsedJobTags & { source?: string }) | null = null;
   if (reParseTags && (input.description || input.title)) {
     const newTitle = input.title ?? existingJob.title;
     const newDescription = input.description ?? existingJob.description;
-    updatedTags = parseJobDescription(newTitle, newDescription);
+    updatedTags = await parseJobDescriptionWithAI(newTitle, newDescription);
+    console.log(`[JobService] Re-parsed job tags using ${updatedTags.source} parser`);
   }
 
   // Update in transaction

@@ -65,7 +65,20 @@ export async function fetchJobs(filters?: JobFilters): Promise<Job[]> {
     }
     
     const data = await response.json();
-    return data.jobs && data.jobs.length > 0 ? data.jobs : filterMockJobs(mockJobs, filters);
+    
+    // Map API response to frontend Job type 
+    if (data.jobs && data.jobs.length > 0) {
+      return data.jobs.map((job: any) => ({
+        ...job,
+        // Map createdAt to postedAt for frontend compatibility
+        postedAt: job.postedAt || job.createdAt,
+        // Map jobTag to tags for skills display
+        skills: job.skills || job.jobTag?.skills || [],
+        tags: job.tags || job.jobTag,
+      }));
+    }
+    
+    return filterMockJobs(mockJobs, filters);
   } catch (error) {
     console.warn("Error fetching jobs, falling back to mock data:", error);
     return filterMockJobs(mockJobs, filters);
@@ -119,7 +132,19 @@ export async function fetchJob(jobId: string): Promise<Job | null> {
     }
     
     const data = await response.json();
-    return data.job;
+    const job = data.job;
+    
+    // Map API response to frontend Job type
+    if (job) {
+      return {
+        ...job,
+        postedAt: job.postedAt || job.createdAt,
+        skills: job.skills || job.jobTag?.skills || [],
+        tags: job.tags || job.jobTag,
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.warn("Error fetching job, falling back to mock data:", error);
     const mockJob = mockJobs.find((j) => j.id === jobId);
@@ -223,7 +248,7 @@ export async function submitReferral(data: {
   candidateName?: string;
   candidateEmail?: string;
   candidateProfileUrl?: string;
-  relation: RelationType;
+  relationType: RelationType;
   note?: string;
   metadata?: Record<string, unknown>;
 }): Promise<ReferralSubmission> {

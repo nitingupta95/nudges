@@ -75,14 +75,20 @@ export function JobCard({ job, memberProfile }: JobCardProps) {
         </div>
       </div>
 
-      {/* AI-Generated Summary */}
+      {/* AI-Generated Summary or Description Fallback */}
       <div className="mt-3 space-y-1.5">
-        {job.aiSummary?.bullets.map((bullet, idx) => (
-          <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-            <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
-            <p className="leading-relaxed">{bullet}</p>
-          </div>
-        ))}
+        {job.aiSummary?.bullets && job.aiSummary.bullets.length > 0 ? (
+          job.aiSummary.bullets.map((bullet, idx) => (
+            <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
+              <p className="leading-relaxed">{bullet}</p>
+            </div>
+          ))
+        ) : job.description ? (
+          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+            {job.description.slice(0, 150)}{job.description.length > 150 ? '...' : ''}
+          </p>
+        ) : null}
       </div>
 
       {/* Referral Readiness Badge */}
@@ -135,9 +141,9 @@ export function JobCard({ job, memberProfile }: JobCardProps) {
       <div className="mt-4 flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
-          {formatDistanceToNow(parseISO(job.postedAt), { addSuffix: true })}
+          {job.postedAt ? formatDistanceToNow(parseISO(job.postedAt), { addSuffix: true }) : "Date unknown"}
         </span>
-        <Link href={`/jobs/${job.id}`}>
+        <Link href={`/dashboard/member/jobs/${job.id}`}>
           <Button
             variant="ghost"
             size="sm"

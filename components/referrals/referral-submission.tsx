@@ -83,7 +83,7 @@ export function ReferralSubmissionForm({
         candidateName: name.trim(),
         candidateEmail: email.trim(), // Added email
         candidateProfileUrl: profileUrl.trim() || undefined,
-        relation: relation as RelationType,
+        relationType: relation as RelationType,
         note: note.trim() || undefined,
       };
       // @ts-ignore - API signature mismatch in local vs updated lib/api.ts
@@ -166,10 +166,17 @@ export function ReferralSubmissionForm({
                 <SelectValue placeholder="Select…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="friend">Friend</SelectItem>
-                <SelectItem value="ex-colleague">Ex-colleague</SelectItem>
-                <SelectItem value="relative">Relative</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="FRIEND">Friend</SelectItem>
+                <SelectItem value="EX_COLLEAGUE">Ex-colleague</SelectItem>
+                <SelectItem value="COLLEGE_ALUMNI">College Alumni</SelectItem>
+                <SelectItem value="FAMILY">Family</SelectItem>
+                <SelectItem value="RELATIVE">Relative</SelectItem>
+                <SelectItem value="BOOTCAMP_CONNECTION">Bootcamp Connection</SelectItem>
+                <SelectItem value="LINKEDIN_CONNECTION">LinkedIn Connection</SelectItem>
+                <SelectItem value="CLASSMATE">Classmate</SelectItem>
+                <SelectItem value="MENTOR">Mentor</SelectItem>
+                <SelectItem value="MENTEE">Mentee</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -61,39 +61,55 @@ export async function getPersonalizedNudgeController(
       );
     }
 
-    // Get match score for context
-    const matchScore = await getMatchScore(memberId, jobId);
+    try {
+      // Get match score for context
+      const matchScore = await getMatchScore(memberId, jobId);
 
-    // Get nudges
-    const nudges = await getReferralNudges(memberId, jobId);
+      // Get nudges
+      const nudges = await getReferralNudges(memberId, jobId);
 
-    // Create nudge log
-    const nudgeLogId = await createNudgeLog({
-      memberId,
-      jobId,
-      nudgeType: matchScore.tier === 'HIGH' ? 'PERSONALIZED' : 'SKILL_BASED',
-      nudgeContent: {
-        headline: 'You may know the perfect candidate!',
-        body: nudges.explain || nudges.nudges[0] || '',
-        cta: 'Refer Someone',
-        inferences: matchScore.topInferences,
-      },
-      matchScore: matchScore.overall,
-      matchTier: matchScore.tier,
-      reasonsSummary: matchScore.reasons.map(r => r.explanation),
-    });
-
-    return successResponse({
-      nudge: {
-        id: nudgeLogId,
-        headline: 'You may know the perfect candidate!',
-        body: nudges.explain || nudges.nudges[0] || '',
-        cta: 'Refer Someone',
+      // Create nudge log
+      const nudgeLogId = await createNudgeLog({
+        memberId,
+        jobId,
+        nudgeType: matchScore.tier === 'HIGH' ? 'PERSONALIZED' : 'SKILL_BASED',
+        nudgeContent: {
+          headline: 'You may know the perfect candidate!',
+          body: nudges.explain || nudges.nudges[0] || '',
+          cta: 'Refer Someone',
+          inferences: matchScore.topInferences,
+        },
         matchScore: matchScore.overall,
         matchTier: matchScore.tier,
-        inferences: matchScore.topInferences,
-      },
-    });
+        reasonsSummary: matchScore.reasons.map(r => r.explanation),
+      });
+
+      return successResponse({
+        nudge: {
+          id: nudgeLogId,
+          headline: 'You may know the perfect candidate!',
+          body: nudges.explain || nudges.nudges[0] || '',
+          cta: 'Refer Someone',
+          matchScore: matchScore.overall,
+          matchTier: matchScore.tier,
+          inferences: matchScore.topInferences,
+        },
+      });
+    } catch (error) {
+      console.error('Error generating nudges:', error);
+      
+      // Return helpful fallback instead of throwing
+      return successResponse({
+        nudge: {
+          headline: 'You may know the perfect candidate!',
+          body: 'Complete your profile to get personalized nudges for this role.',
+          cta: 'Refer Someone',
+          matchScore: 0,
+          matchTier: 'LOW',
+          inferences: [],
+        },
+      });
+    }
   });
 }
 

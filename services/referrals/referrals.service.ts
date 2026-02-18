@@ -33,7 +33,7 @@ export async function createReferral(
     throw new Error("A referral for this candidate already exists for this job");
   }
 
-  // Create the referral
+  // Create the referral with SUBMITTED status
   return prisma.referral.create({
     data: {
       referrerId: userId,
@@ -43,12 +43,13 @@ export async function createReferral(
       candidateEmail: candidateEmail.toLowerCase(),
       candidatePhone,
       referralNote,
-      status: ReferralStatus.DRAFT,
+      status: ReferralStatus.SUBMITTED,
+      submittedAt: new Date(),
       statusHistory: [
         {
-          status: ReferralStatus.DRAFT,
+          status: ReferralStatus.SUBMITTED,
           timestamp: new Date().toISOString(),
-          note: "Referral created",
+          note: "Referral submitted",
         },
       ],
     },
@@ -57,16 +58,40 @@ export async function createReferral(
 
 /**
  * List all referrals for a specific user.
+ * For members: returns referrals they've made
+ * For recruiters: returns referrals for jobs they created
  * Supports optional filtering by referral status.
  */
 export async function listReferrals(
   userId: string,
-  options?: { status?: ReferralStatus; limit?: number; offset?: number }
+  options?: { status?: ReferralStatus; limit?: number; offset?: number; role?: string }
 ) {
-  const where = {
-    referrerId: userId,
-    status: options?.status ?? undefined,
-  };
+  // Check if user is a recruiter - if so, show referrals for their jobs
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  const isRecruiter = user?.role === 'RECRUITER' || user?.role === 'ADMIN' || options?.role === 'RECRUITER';
+
+  let where: any = {};
+
+  if (isRecruiter) {
+    // For recruiters: get referrals for jobs they created
+    where = {
+      job: {
+        createdById: userId,
+      },
+      // Exclude drafts for recruiters - they should only see submitted referrals
+      status: options?.status ?? { not: 'DRAFT' },
+    };
+  } else {
+    // For members: get referrals they've made
+    where = {
+      referrerId: userId,
+      status: options?.status ?? undefined,
+    };
+  }
 
   return prisma.referral.findMany({
     where,
@@ -79,6 +104,13 @@ export async function listReferrals(
           id: true,
           title: true,
           company: true,
+        },
+      },
+      referrer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
         },
       },
     },

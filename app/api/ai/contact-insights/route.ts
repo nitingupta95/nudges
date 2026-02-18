@@ -27,7 +27,7 @@
 
 import { NextResponse } from "next/server";
 import { extractContactInsights } from "@/services/ai/ai.service";
-import { cachedAICall } from "@/services/ai/ai-cache.service";
+import { cachedAICall } from "@/services/ai/ai.cache.serivce";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
