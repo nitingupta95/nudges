@@ -8,10 +8,10 @@ export function Footer() {
           <span className="flex h-6 w-6 items-center justify-center rounded bg-accent text-accent-foreground text-xs font-extrabold">
             P
           </span>
-          Pieworks
+          Nudges
         </div>
         <p>{t("landing.privacy")}</p>
-        <p>© {new Date().getFullYear()} Pieworks. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Nudges. All rights reserved.</p>
       </div>
     </footer>
   );

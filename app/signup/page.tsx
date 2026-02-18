@@ -75,7 +75,7 @@ export default function Signup() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground text-sm font-extrabold shadow-lg shadow-primary/25">
                 P
               </span>
-              Pieworks
+              Nudges
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-foreground tracking-tight">

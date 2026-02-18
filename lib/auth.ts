@@ -365,7 +365,7 @@ async function getDevUser(): Promise<AuthUser | null> {
   // Return a default dev user if no users exist
   return {
     id: "dev-user-id",
-    email: "dev@pieworks.com",
+    email: "dev@Nudges.com",
     name: "Dev User",
     role: "MEMBER",
   };

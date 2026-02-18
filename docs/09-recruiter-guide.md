@@ -1,8 +1,8 @@
-# Recruiter Guide for Pieworks
+# Recruiter Guide for Nudges
 
 ## Overview
 
-This document outlines the recruiter functionality in Pieworks - a referral-driven hiring platform. Recruiters can post jobs, track referrals, and leverage the intelligent nudge engine to source candidates through member networks.
+This document outlines the recruiter functionality in Nudges - a referral-driven hiring platform. Recruiters can post jobs, track referrals, and leverage the intelligent nudge engine to source candidates through member networks.
 
 ---
 

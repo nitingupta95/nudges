@@ -19,7 +19,7 @@ Authorization: Bearer <token>
 ## 📍 Base URL
 
 ```
-Production: https://api.pieworks.com/v1
+Production: https://api.Nudges.com/v1
 Development: http://localhost:3000/api
 ```
 
