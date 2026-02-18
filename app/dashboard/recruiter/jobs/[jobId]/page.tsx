@@ -39,6 +39,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { CandidateRanking } from "@/components/resume";
 import { fetchJob } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -66,6 +73,7 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
+  Trophy,
 } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
 import { EmailComposerDialog } from "@/components/email/email-composer-dialog";
@@ -642,18 +650,32 @@ export default function RecruiterJobDetail() {
           </Card>
         )}
 
-        {/* Referrals */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Referrals ({referrals.length})
-            </CardTitle>
-            <CardDescription>
-              Candidates referred for this position
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Referrals & Candidate Rankings */}
+        <div className="mt-8">
+          <Tabs defaultValue="referrals">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="referrals" className="gap-2">
+                <Users className="h-4 w-4" />
+                Referrals ({referrals.length})
+              </TabsTrigger>
+              <TabsTrigger value="rankings" className="gap-2">
+                <Trophy className="h-4 w-4" />
+                Candidate Rankings
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="referrals">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Referrals ({referrals.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Candidates referred for this position
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
             {loadingReferrals ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
@@ -804,6 +826,16 @@ export default function RecruiterJobDetail() {
             )}
           </CardContent>
         </Card>
+            </TabsContent>
+            
+            <TabsContent value="rankings">
+              <CandidateRanking 
+                jobId={jobId} 
+                jobTitle={job?.title || ""} 
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}

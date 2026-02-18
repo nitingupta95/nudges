@@ -7,3 +7,4 @@ export { useNudges } from "./use-nudges";
 export { useMessages } from "./use-messages";
 export { useMatching } from "./use-matching";
 export { useApi } from "./use-api";
+export { useResume } from "./use-resume";

@@ -311,6 +311,12 @@ model Referral {
   candidateLinkedIn String?
   candidateResume   String? // URL to uploaded resume
 
+  // Parsed resume data (AI-extracted)
+  parsedResumeData  Json?   // Structured resume data from AI parsing
+  resumeMatchScore  Json?   // Match score breakdown against job
+  fitScore          Int?    // 0-100 overall fit score
+  resumeParsedAt    DateTime? // When the resume was last parsed
+
   // Relationship context - for explainable nudges
   relationType     RelationType
   relationshipNote String?      @db.Text
