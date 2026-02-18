@@ -11,7 +11,7 @@ const translations: Record<string, string> = {
   // Landing
   "landing.headline": "Refer people you trust to roles that matter",
   "landing.subheadline":
-    "Pieworks helps you remember who in your network to reach out to — and makes referring them effortless.",
+    "Nudges helps you remember who in your network to reach out to — and makes referring them effortless.",
   "landing.cta.start": "Get started",
   "landing.cta.post": "Post a job",
   "landing.step1.title": "Browse open roles",
@@ -108,12 +108,12 @@ const translations: Record<string, string> = {
   "settings.title": "Settings",
   "settings.privacy": "Privacy",
   "settings.privacyNote":
-    "Pieworks never accesses your contacts, email, or social accounts. Nudges are generated from your self-reported skills and preferences only.",
+    "Nudges never accesses your contacts, email, or social accounts. Nudges are generated from your self-reported skills and preferences only.",
   "settings.dataUsed": "Data used to generate nudges",
   "settings.policyLink": "Read our full privacy policy",
 
   // Auth
-  "auth.login": "Log in to Pieworks",
+  "auth.login": "Log in to Nudges",
   "auth.signup": "Create your account",
   "auth.email": "Email",
   "auth.password": "Password",

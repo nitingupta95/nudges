@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-This documentation covers the **Intelligent Referral Nudge Engine for Pieworks** - a production-ready feature for a referral-driven hiring platform that:
+This documentation covers the **Intelligent Referral Nudge Engine for Nudges** - a production-ready feature for a referral-driven hiring platform that:
 
 - **Identifies** which members are most likely to know suitable candidates for a job
 - **Nudges** them intelligently with personalized triggers

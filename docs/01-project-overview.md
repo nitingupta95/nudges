@@ -1,4 +1,4 @@
-# Intelligent Referral Nudge Engine for Pieworks
+# Intelligent Referral Nudge Engine for Nudges
 
 ## Project Overview
 

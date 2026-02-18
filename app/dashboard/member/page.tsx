@@ -52,21 +52,21 @@ export default function MemberDashboard() {
   const statCards = [
     {
       icon: Briefcase,
-      label: t("dashboard.stats.total"),
+      label: t("Total Jobs"),
       value: stats.totalJobs,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
       icon: Clock,
-      label: t("dashboard.stats.closing"),
+      label: t("Closing Soon"),
       value: stats.closingSoon,
       color: "text-amber-600",
       bgColor: "bg-amber-100",
     },
     {
       icon: TrendingUp,
-      label: t("dashboard.stats.goodFit"),
+      label: t("Good Fit"),
       value: stats.goodFit,
       color: "text-green-600",
       bgColor: "bg-green-100",
@@ -146,14 +146,14 @@ export default function MemberDashboard() {
 
           {/* Quick Actions */}
           <div className="flex gap-3">
-            <Link href="/referrals">
+            <Link href="/dashboard/member/referrals">
               <Button variant="outline" size="sm">
                 <Users className="h-4 w-4 mr-2" />
                 My Referrals
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
-            <Link href="/profile">
+            <Link href="/dashboard/member/profile">
               <Button variant="outline" size="sm">
                 Complete Profile
               </Button>
@@ -164,7 +164,7 @@ export default function MemberDashboard() {
         {/* Job List */}
         <div>
           <h2 className="text-xl font-semibold text-foreground mb-4">
-            {t("dashboard.jobs.title")}
+            {t("Job Listing")}
           </h2>
           <JobList memberProfile={profile} />
         </div>

@@ -79,7 +79,7 @@ export function Header() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-extrabold">
             P
           </span>
-          Pieworks
+          Nudges
         </Link>
 
         {/* Loading state */}
@@ -115,8 +115,8 @@ export function Header() {
 
             <div className="hidden items-center gap-3 md:flex">
               {user?.role && (
-                <Badge 
-                  variant={isRecruiterOrAdmin ? "default" : "outline"} 
+                <Badge
+                  variant={isRecruiterOrAdmin ? "default" : "outline"}
                   className="text-xs capitalize"
                 >
                   {user.role.toLowerCase()}
@@ -173,8 +173,8 @@ export function Header() {
         <div className="border-t bg-card p-4 md:hidden">
           {user?.role && (
             <div className="mb-3 pb-3 border-b">
-              <Badge 
-                variant={isRecruiterOrAdmin ? "default" : "outline"} 
+              <Badge
+                variant={isRecruiterOrAdmin ? "default" : "outline"}
                 className="text-xs capitalize"
               >
                 {user.role.toLowerCase()}
