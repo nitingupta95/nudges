@@ -83,66 +83,90 @@ function getAuthToken(request: NextRequest): string | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protected route patterns
-  const isMemberRoute = pathname.startsWith('/dashboard/member');
-  const isRecruiterRoute = pathname.startsWith('/dashboard/recruiter');
-  const isDashboardRoute = pathname === '/dashboard';
-
-  // Skip middleware for non-dashboard routes
-  if (!isMemberRoute && !isRecruiterRoute && !isDashboardRoute) {
-    return NextResponse.next();
-  }
+  // Define public paths that don't require authentication
+  const publicPaths = ['/login', '/signup', '/landing', '/', '/design-preview', '/api/auth/login', '/api/auth/signup', '/api/auth/register'];
+  const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'));
 
   // Get auth token
   const token = getAuthToken(request);
 
-  if (!token) {
-    // Not logged in - redirect to login
+  // If user is not logged in and trying to access a protected route
+  if (!token && !isPublicPath) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Verify token
-  const payload = await verifyToken(token);
+  // If user is logged in
+  if (token) {
+    const payload = await verifyToken(token);
 
-  if (!payload) {
-    // Invalid/expired token - redirect to login
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  const userRole = payload.role;
-
-  // Role-based access control
-  if (isMemberRoute && userRole !== 'MEMBER') {
-    // Non-members trying to access member dashboard
-    if (userRole === 'RECRUITER' || userRole === 'ADMIN') {
-      return NextResponse.redirect(new URL('/dashboard/recruiter', request.url));
+    if (!payload && !isPublicPath) {
+      // Invalid token on protected route
+      if (pathname.startsWith('/api')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
 
-  if (isRecruiterRoute && userRole !== 'RECRUITER' && userRole !== 'ADMIN') {
-    // Non-recruiters/admins trying to access recruiter dashboard
-    if (userRole === 'MEMBER') {
-      return NextResponse.redirect(new URL('/dashboard/member', request.url));
-    }
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
+    if (payload) {
+      // If user is logged in and tries to access login/signup/landing, redirect to dashboard
+      if (isPublicPath && !pathname.startsWith('/api') && pathname !== '/design-preview') {
+        // Redirect to appropriate dashboard based on role
+        const userRole = payload.role;
+        if (userRole === 'RECRUITER' || userRole === 'ADMIN') {
+          return NextResponse.redirect(new URL('/dashboard/recruiter', request.url));
+        } else {
+          return NextResponse.redirect(new URL('/dashboard/member', request.url));
+        }
+      }
 
-  // Main /dashboard route - redirect based on role
-  if (isDashboardRoute) {
-    if (userRole === 'RECRUITER' || userRole === 'ADMIN') {
-      return NextResponse.redirect(new URL('/dashboard/recruiter', request.url));
+      // Role-based access control for dashboard routes
+      const isMemberRoute = pathname.startsWith('/dashboard/member');
+      const isRecruiterRoute = pathname.startsWith('/dashboard/recruiter');
+      const isDashboardRoute = pathname === '/dashboard';
+      const userRole = payload.role;
+
+      if (isMemberRoute && userRole !== 'MEMBER') {
+        if (userRole === 'RECRUITER' || userRole === 'ADMIN') {
+          return NextResponse.redirect(new URL('/dashboard/recruiter', request.url));
+        }
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      if (isRecruiterRoute && userRole !== 'RECRUITER' && userRole !== 'ADMIN') {
+        if (userRole === 'MEMBER') {
+          return NextResponse.redirect(new URL('/dashboard/member', request.url));
+        }
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      if (isDashboardRoute) {
+        if (userRole === 'RECRUITER' || userRole === 'ADMIN') {
+          return NextResponse.redirect(new URL('/dashboard/recruiter', request.url));
+        }
+        return NextResponse.redirect(new URL('/dashboard/member', request.url));
+      }
     }
-    return NextResponse.redirect(new URL('/dashboard/member', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - images (public images)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|images).*)',
+  ],
 };

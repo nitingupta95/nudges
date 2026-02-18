@@ -19,8 +19,8 @@ import {
   Star,
   ChevronRight,
   Sparkles,
-} from "lucide-react";
-import heroBg from "@/assets/hero-bg.jpg";
+} from "lucide-react"; 
+import { useRouter } from "next/navigation";
 
 /* ────────────────────────────────────────────────────────────
    DATA
@@ -94,7 +94,7 @@ const stats = [
 
 const testimonials = [
   {
-    quote: "Pieworks surfaced candidates we never would have found. The AI matching is genuinely impressive.",
+    quote: "Nudges surfaced candidates we never would have found. The AI matching is genuinely impressive.",
     name: "Sarah Chen",
     role: "VP Talent, Horizon Labs",
     avatar: "SC",
@@ -164,6 +164,7 @@ function AnimatedCounter({ value }: { value: string }) {
 ──────────────────────────────────────────────────────────── */
 export default function Index() {
   const [scrolled, setScrolled] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -176,18 +177,18 @@ export default function Index() {
       {/* ── HEADER ── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-            ? "bg-background/80 backdrop-blur-xl border-b border-border"
-            : "bg-transparent"
+          ? "bg-background/80 backdrop-blur-xl border-b border-border"
+          : "bg-transparent"
           }`}
       >
         <div className="container max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center text-accent-foreground font-display font-bold text-sm shadow-glow-primary">
-              P
+              
             </div>
             <span className="font-display font-bold text-foreground text-lg tracking-tight">
-              Pieworks
+              NUDGES
             </span>
           </div>
 
@@ -206,10 +207,10 @@ export default function Index() {
 
           {/* CTA */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button onClick={() => { router.push("/login") }} variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
               Log in
             </Button>
-            <Button size="sm" className="bg-gradient-brand text-accent-foreground font-semibold shadow-glow-primary hover:opacity-90 transition-opacity">
+            <Button onClick={() => { router.push("/signup") }} size="sm" className="bg-gradient-brand text-accent-foreground font-semibold shadow-glow-primary hover:opacity-90 transition-opacity">
               Get started
               <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
@@ -221,11 +222,11 @@ export default function Index() {
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         {/* Background image */}
         <div className="absolute inset-0">
-          <img
-            src="/hero-bg.jpg"
+          {/* <img
+            src="./hero-bg.jpg"
             alt="Network background"
             className="w-full h-full object-cover opacity-20"
-          />
+          /> */}
           <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
         </div>
 
@@ -266,7 +267,7 @@ export default function Index() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Pieworks turns every employee into a talent scout. Smart matching, personalised nudges,
+            Nudges turns every employee into a talent scout. Smart matching, personalised nudges,
             and AI-crafted messages make referrals effortless — and measurable.
           </motion.p>
 
@@ -277,6 +278,7 @@ export default function Index() {
             className="flex flex-wrap items-center justify-center gap-4"
           >
             <Button
+              onClick={() => { router.push("/signup") }}
               size="lg"
               className="bg-gradient-brand text-accent-foreground font-semibold px-8 h-12 text-base shadow-glow-primary hover:opacity-90 transition-opacity animate-glow-pulse"
             >
@@ -284,6 +286,7 @@ export default function Index() {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <Button
+              onClick={() => { router.push("/signup") }}
               size="lg"
               variant="outline"
               className="border-border bg-card/50 backdrop-blur text-foreground font-semibold px-8 h-12 text-base hover:bg-secondary transition-colors"
@@ -513,14 +516,14 @@ export default function Index() {
               >
                 <div
                   className={`rounded-2xl p-7 h-full border transition-all duration-300 card-glow ${card.color === "accent"
-                      ? "border-accent/30 bg-accent/5 hover:border-accent/50"
-                      : "border-primary/30 bg-primary/5 hover:border-primary/50"
+                    ? "border-accent/30 bg-accent/5 hover:border-accent/50"
+                    : "border-primary/30 bg-primary/5 hover:border-primary/50"
                     }`}
                 >
                   <div
                     className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${card.color === "accent"
-                        ? "bg-accent/20 border border-accent/30"
-                        : "bg-primary/20 border border-primary/30"
+                      ? "bg-accent/20 border border-accent/30"
+                      : "bg-primary/20 border border-primary/30"
                       }`}
                   >
                     <card.icon
@@ -561,10 +564,11 @@ export default function Index() {
                   <span className="gradient-brand-text">great people?</span>
                 </h2>
                 <p className="text-muted-foreground text-lg mb-10 max-w-lg mx-auto">
-                  Join Pieworks and connect your company with top talent hidden in your employees' networks.
+                  Join Nudges and connect your company with top talent hidden in your employees' networks.
                 </p>
                 <div className="flex flex-wrap gap-4 justify-center">
                   <Button
+                  onClick={()=>{router.push("/signup")}}
                     size="lg"
                     className="bg-gradient-brand text-accent-foreground font-semibold px-10 h-13 text-base shadow-glow-primary hover:opacity-90 transition-opacity"
                   >
@@ -573,6 +577,7 @@ export default function Index() {
                   </Button>
                   <Button
                     size="lg"
+                    onClick={()=>{router.push("/login")}}
                     variant="outline"
                     className="border-border text-foreground font-semibold px-8 h-13 text-base hover:bg-secondary"
                   >
@@ -593,10 +598,10 @@ export default function Index() {
             <div className="w-6 h-6 rounded-md bg-gradient-brand flex items-center justify-center text-accent-foreground font-display font-bold text-xs">
               P
             </div>
-            <span className="font-display font-bold text-foreground text-sm">Pieworks</span>
+            <span className="font-display font-bold text-foreground text-sm">Nudges</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            © 2026 Pieworks. All rights reserved.
+            © 2026 Nudges. All rights reserved.
           </p>
           <div className="flex gap-6">
             {["Privacy", "Terms", "Security"].map((link) => (
