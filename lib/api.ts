@@ -7,86 +7,117 @@ import type {
 } from "@/types";
 import { mockJobs, mockNudges, mockReferrals } from "@/mock/data";
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// ============================================
+// CONFIGURATION
+// ============================================
 
-function shouldFail(): boolean {
-  // 5% chance of simulated failure for dev testing
-  return Math.random() < 0.05;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+
+interface FetchOptions extends RequestInit {
+  timeout?: number;
 }
 
-export async function fetchJobs(filters?: JobFilters): Promise<Job[]> {
-  // await delay(600 + Math.random() * 400);
-  // if (shouldFail()) throw new Error("network");
+async function fetchWithTimeout(
+  url: string,
+  options: FetchOptions = {}
+): Promise<Response> {
+  const { timeout = 10000, ...fetchOptions } = options;
 
-  // let jobs = [...mockJobs];
-
-  // if (filters?.domain) {
-  //   jobs = jobs.filter((j) => j.domain === filters.domain);
-  // }
-  // if (filters?.experienceLevel) {
-  //   jobs = jobs.filter((j) => j.experienceLevel === filters.experienceLevel);
-  // }
-  // if (filters?.location) {
-  //   jobs = jobs.filter((j) => j.location === filters.location);
-  // }
-  // if (filters?.closingSoon) {
-  //   const soon = new Date();
-  //   soon.setDate(soon.getDate() + 7);
-  //   jobs = jobs.filter(
-  //     (j) => j.closingDate && new Date(j.closingDate) <= soon
-  //   );
-  // }
-  // if (filters?.search) {
-  //   const q = filters.search.toLowerCase();
-  //   jobs = jobs.filter(
-  //     (j) => {
-  //       const companyName = typeof j.company === "string" ? j.company : j.company.name;
-  //       return (
-  //         j.title.toLowerCase().includes(q) ||
-  //         companyName.toLowerCase().includes(q) ||
-  //         j.skills?.some((s) => s.includes(q))
-  //       );
-  //     }
-  //   );
-  // }
-
-  // return jobs;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const params = new URLSearchParams();
-    if (filters?.domain) params.append("domain", filters.domain);
-    if (filters?.experienceLevel) params.append("experienceLevel", filters.experienceLevel); // Fixed casing
-    if (filters?.location) params.append("location", filters.location);
-    if (filters?.closingSoon) params.append("closingSoon", "true");
-    if (filters?.search) params.append("search", filters.search);
-
-    const response = await fetch(`/api/jobs?${params.toString()}`);
-    if (!response.ok) {
-      console.warn("API fetch failed, falling back to mock jobs");
-      return mockJobs;
-    }
-    const data = await response.json();
-    return data.jobs && data.jobs.length > 0 ? data.jobs : mockJobs;
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+      credentials: "include",
+    });
+    clearTimeout(id);
+    return response;
   } catch (error) {
-    console.warn("Error fetching jobs, falling back to mock data:", error);
-    return mockJobs;
+    clearTimeout(id);
+    throw error;
   }
 }
 
-export async function fetchJob(jobId: string): Promise<Job | null> {
-  // Try to find in mock data first if it looks like a mock ID (optional optimization)
-  // but for now let's try API first then fallback
+// ============================================
+// JOBS API
+// ============================================
 
+export async function fetchJobs(filters?: JobFilters): Promise<Job[]> {
   try {
-    const response = await fetch(`/api/jobs/${jobId}`);
+    const params = new URLSearchParams();
+    
+    if (filters?.domain) params.set("domain", filters.domain);
+    if (filters?.experienceLevel) params.set("experienceLevel", filters.experienceLevel);
+    if (filters?.skills?.length) params.set("skills", filters.skills.join(","));
+    if (filters?.location) params.set("location", filters.location);
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.closingSoon) params.set("closingSoon", "true");
+    if (filters?.limit) params.set("limit", String(filters.limit));
+    if (filters?.offset) params.set("offset", String(filters.offset));
+
+    const response = await fetchWithTimeout(`${API_BASE}/api/jobs?${params.toString()}`);
+    
+    if (!response.ok) {
+      console.warn("API fetch failed, falling back to mock jobs");
+      return filterMockJobs(mockJobs, filters);
+    }
+    
+    const data = await response.json();
+    return data.jobs && data.jobs.length > 0 ? data.jobs : filterMockJobs(mockJobs, filters);
+  } catch (error) {
+    console.warn("Error fetching jobs, falling back to mock data:", error);
+    return filterMockJobs(mockJobs, filters);
+  }
+}
+
+function filterMockJobs(jobs: Job[], filters?: JobFilters): Job[] {
+  if (!filters) return jobs;
+
+  let filtered = [...jobs];
+
+  if (filters.domain) {
+    filtered = filtered.filter((j) => j.domain === filters.domain);
+  }
+  if (filters.experienceLevel) {
+    filtered = filtered.filter((j) => j.experienceLevel === filters.experienceLevel);
+  }
+  if (filters.location) {
+    filtered = filtered.filter((j) => j.location?.toLowerCase().includes(filters.location!.toLowerCase()));
+  }
+  if (filters.search) {
+    const searchLower = filters.search.toLowerCase();
+    filtered = filtered.filter(
+      (j) =>
+        j.title.toLowerCase().includes(searchLower) ||
+        j.company.name?.toLowerCase().includes(searchLower) ||
+        j.description?.toLowerCase().includes(searchLower)
+    );
+  }
+  if (filters.closingSoon) {
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 7);
+    filtered = filtered.filter(
+      (j) => j.closingDate && new Date(j.closingDate) <= soon
+    );
+  }
+
+  return filtered;
+}
+
+export async function fetchJob(jobId: string): Promise<Job | null> {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE}/api/jobs/${jobId}`);
+    
     if (!response.ok) {
       if (response.status === 404) {
-        // If not found in API, check mock data
         const mockJob = mockJobs.find((j) => j.id === jobId);
         return mockJob || null;
       }
       throw new Error("Failed to fetch job");
     }
+    
     const data = await response.json();
     return data.job;
   } catch (error) {
@@ -96,16 +127,34 @@ export async function fetchJob(jobId: string): Promise<Job | null> {
   }
 }
 
-export async function fetchNudges(jobId: string): Promise<ReferralNudgeResponse> {
-  // await delay(800 + Math.random() * 600);
-  // if (shouldFail()) throw new Error("network");
-  // return mockNudges[jobId] || { nudges: [] };
+export async function fetchJobSummary(jobId: string): Promise<{ bullets: string[]; source: string }> {
   try {
-    const response = await fetch(`/api/jobs/${jobId}/referral-nudges`);
+    const response = await fetchWithTimeout(`${API_BASE}/api/jobs/${jobId}/summary`);
+    
+    if (!response.ok) {
+      throw new Error("Failed to fetch job summary");
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.warn("Error fetching job summary:", error);
+    return { bullets: [], source: "error" };
+  }
+}
+
+// ============================================
+// NUDGES API
+// ============================================
+
+export async function fetchNudges(jobId: string): Promise<ReferralNudgeResponse> {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE}/api/jobs/${jobId}/referral-nudges`);
+    
     if (!response.ok) {
       console.warn(`Failed to fetch nudges for ${jobId}, falling back to mock data`);
       return mockNudges[jobId as keyof typeof mockNudges] || { nudges: [] };
     }
+    
     return response.json();
   } catch (error) {
     console.warn("Error fetching nudges, falling back to mock data:", error);
@@ -113,16 +162,52 @@ export async function fetchNudges(jobId: string): Promise<ReferralNudgeResponse>
   }
 }
 
-export async function fetchReferrals(): Promise<ReferralSubmission[]> {
-  // await delay(500 + Math.random() * 300);
-  // if (shouldFail()) throw new Error("network");
-  // return [...mockReferrals];
+export async function fetchPersonalizedNudge(
+  jobId: string,
+  memberId?: string
+): Promise<{
+  nudge: {
+    id: string;
+    headline: string;
+    body: string;
+    cta: string;
+    matchScore: number;
+    matchTier: string;
+    inferences: string[];
+  } | null;
+}> {
   try {
-    const response = await fetch("/api/referrals");
+    const params = new URLSearchParams({ jobId });
+    if (memberId) params.set("memberId", memberId);
+
+    const response = await fetchWithTimeout(
+      `${API_BASE}/api/nudges/personalized?${params.toString()}`
+    );
+    
+    if (!response.ok) {
+      return { nudge: null };
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.warn("Error fetching personalized nudge:", error);
+    return { nudge: null };
+  }
+}
+
+// ============================================
+// REFERRALS API
+// ============================================
+
+export async function fetchReferrals(): Promise<ReferralSubmission[]> {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE}/api/referrals`);
+    
     if (!response.ok) {
       console.warn("Failed to fetch referrals, falling back to mock data");
       return [...mockReferrals];
     }
+    
     const data = await response.json();
     return data.referrals && data.referrals.length > 0 ? data.referrals : [...mockReferrals];
   } catch (error) {
@@ -133,70 +218,164 @@ export async function fetchReferrals(): Promise<ReferralSubmission[]> {
 
 export async function submitReferral(data: {
   jobId: string;
-  jobTitle: string;
-  companyName: string;
+  jobTitle?: string;
+  companyName?: string;
   candidateName?: string;
   candidateEmail?: string;
   candidateProfileUrl?: string;
   relation: RelationType;
   note?: string;
+  metadata?: Record<string, unknown>;
 }): Promise<ReferralSubmission> {
-  // await delay(800 + Math.random() * 400);
-  // if (shouldFail()) throw new Error("network");
-
-  // // Check for duplicates
-  // const duplicate = mockReferrals.find(
-  //   (r) =>
-  //     r.jobId === data.jobId &&
-  //     r.candidateName?.toLowerCase() === data.candidateName?.toLowerCase()
-  // );
-  // if (duplicate) {
-  //   throw new Error("duplicate");
-  // }
-
-  // const referral: ReferralSubmission = {
-  //   id: `r-${Date.now()}`,
-  //   jobId: data.jobId,
-  //   jobTitle: data.jobTitle,
-  //   companyName: data.companyName,
-  //   candidateName: data.candidateName,
-  //   candidateProfileUrl: data.candidateProfileUrl,
-  //   relation: data.relation,
-  //   note: data.note,
-  //   status: "pending",
-  //   createdAt: new Date().toISOString(),
-  //   createdBy: "u-1",
-  //   activity: [
-  //     { timestamp: new Date().toISOString(), action: "Referral submitted" },
-  //   ],
-  // };
-
-  // return referral;
-
-  const response = await fetch("/api/referrals", {
+  const response = await fetchWithTimeout(`${API_BASE}/api/referrals`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      userId: "u-1", // Hardcoded for now, should come from auth context
-      jobId: data.jobId,
-      relation: data.relation,
-      candidateName: data.candidateName,
-      candidateEmail: data.candidateEmail,
-      candidatePhone: null,
-      referralNote: data.note,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 
   if (!response.ok) {
     const errorData = await response.json();
-    if (response.status === 409) {
-      throw new Error("duplicate");
-    }
     throw new Error(errorData.error || "Failed to submit referral");
   }
 
-  const result = await response.json();
-  return result.referral;
+  const responseData = await response.json();
+  return responseData.referral;
+}
+
+// ============================================
+// MESSAGES API
+// ============================================
+
+export async function generateMessage(params: {
+  jobId: string;
+  memberId?: string;
+  template?: string;
+  tone?: string;
+  customContext?: string;
+}): Promise<{
+  message: string;
+  subject?: string;
+  shareLinks: { whatsapp: string; email: string; linkedin: string };
+  source: string;
+}> {
+  const response = await fetchWithTimeout(`${API_BASE}/api/messages/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to generate message");
+  }
+
+  return response.json();
+}
+
+// ============================================
+// CONTACT INSIGHTS API
+// ============================================
+
+export async function fetchContactInsights(
+  jobTitle: string,
+  jobDescription: string,
+  company?: string
+): Promise<{
+  roles: string[];
+  departments: string[];
+  description: string;
+  source: string;
+}> {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE}/api/jobs/contact-insights`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobTitle, jobDescription, company }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch contact insights");
+    }
+
+    const data = await response.json();
+    return data.insights;
+  } catch (error) {
+    console.warn("Error fetching contact insights:", error);
+    return {
+      roles: ["Hiring Manager", "Team Lead", "HR Recruiter"],
+      departments: ["Engineering", "HR"],
+      description: "Reach out to the hiring team.",
+      source: "fallback",
+    };
+  }
+}
+
+// ============================================
+// MATCHING API
+// ============================================
+
+export async function fetchMatchScore(
+  memberId: string,
+  jobId: string
+): Promise<{
+  overall: number;
+  tier: "HIGH" | "MEDIUM" | "LOW";
+  breakdown: Record<string, number>;
+  reasons: Array<{ type: string; explanation: string }>;
+}> {
+  const params = new URLSearchParams({ memberId, jobId });
+  const response = await fetchWithTimeout(`${API_BASE}/api/matching/score?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch match score");
+  }
+
+  const data = await response.json();
+  return data.matchScore;
+}
+
+// ============================================
+// EVENTS API
+// ============================================
+
+export async function trackEvent(event: {
+  type: string;
+  userId?: string;
+  jobId?: string;
+  referralId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    await fetchWithTimeout(`${API_BASE}/api/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    });
+  } catch (error) {
+    console.error("Error tracking event:", error);
+  }
+}
+
+// ============================================
+// STATS API
+// ============================================
+
+export async function fetchDashboardStats(userId?: string): Promise<{
+  totalJobs: number;
+  closingSoon: number;
+  goodFit: number;
+}> {
+  try {
+    const params = userId ? `?userId=${userId}` : "";
+    const response = await fetchWithTimeout(`${API_BASE}/api/jobs/stats${params}`);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch stats");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.warn("Error fetching stats:", error);
+    return { totalJobs: 0, closingSoon: 0, goodFit: 0 };
+  }
 }

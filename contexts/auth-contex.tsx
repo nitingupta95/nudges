@@ -1,104 +1,80 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import type { User } from "@/types";
 
-interface AuthContextValue {
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+
+// ============================================
+// TYPES
+// ============================================
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "MEMBER" | "RECRUITER" | "ADMIN";
+  createdAt?: string;
+}
+
+interface MemberProfile {
+  id: string;
+  userId: string;
+  skills: string[];
+  pastCompanies: string[];
+  domains: string[];
+  experienceLevel: string;
+  yearsOfExperience: number;
+  currentCompany?: string;
+  currentTitle?: string;
+  location?: string;
+  preferredDomains: string[];
+  preferredRoles: string[];
+  isOpenToRefer: boolean;
+  profileCompleteness: number;
+}
+
+interface AuthContextType {
   user: User | null;
+  profile: MemberProfile | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  loading: boolean;
+  refreshProfile: () => Promise<void>;
+  updateProfile: (data: Partial<MemberProfile>) => Promise<void>;
+  clearError: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+// ============================================
+// CONTEXT
+// ============================================
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// ============================================
+// PROVIDER
+// ============================================
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is already logged in on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Cookie is automatically sent with the request
-        const response = await fetch("/api/users/me", {
-          credentials: "include", // Important: include cookies
-        });
+  const isAuthenticated = useMemo(() => !!user, [user]);
 
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error("Auth check failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Clear error
+  const clearError = useCallback(() => setError(null), []);
 
-    checkAuth();
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include", // Important: include cookies
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Login failed");
-    }
-
-    const data = await response.json();
-
-    // Set user data (token is in cookie)
-    setUser(data.user);
-  }, []);
-
-  const signup = useCallback(
-    async (name: string, email: string, password: string) => {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Important: include cookies
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Signup failed");
-      }
-
-      const data = await response.json();
-
-      // Auto-login after signup
-      setUser(data.user);
-    },
-    []
-  );
-
-  const logout = useCallback(async () => {
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include", // Important: include cookies
-      });
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setUser(null);
-    }
-  }, []);
-
+  // Fetch current user
   const refreshUser = useCallback(async () => {
     try {
       const response = await fetch("/api/users/me", {
@@ -106,25 +82,203 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+        const data = await response.json();
+        setUser(data.user);
+        return data.user;
+      } else if (response.status === 401) {
+        setUser(null);
+        setProfile(null);
       }
-    } catch (error) {
-      console.error("Refresh user failed:", error);
+    } catch (err) {
+      console.error("Failed to refresh user:", err);
+    }
+    return null;
+  }, []);
+
+  // Fetch member profile
+  const refreshProfile = useCallback(async () => {
+    try {
+      const response = await fetch("/api/users/me/profile", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data);
+        return data;
+      }
+    } catch (err) {
+      console.error("Failed to refresh profile:", err);
+    }
+    return null;
+  }, []);
+
+  // Initial auth check
+  useEffect(() => {
+    const initAuth = async () => {
+      setIsLoading(true);
+      try {
+        const userData = await refreshUser();
+        if (userData) {
+          await refreshProfile();
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
+  }, [refreshUser, refreshProfile]);
+
+  // Login
+  const login = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Login failed");
+      }
+
+      const data = await response.json();
+      setUser(data.user);
+
+      // Fetch profile after login
+      await refreshProfile();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Login failed";
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshProfile]);
+
+  // Signup
+  const signup = useCallback(async (name: string, email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Signup failed");
+      }
+
+      const data = await response.json();
+      setUser(data.user);
+
+      // Fetch profile after signup
+      await refreshProfile();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Signup failed";
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshProfile]);
+
+  // Logout
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setIsLoading(false);
     }
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, login, signup, logout, refreshUser, loading }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // Update profile
+  const updateProfile = useCallback(async (data: Partial<MemberProfile>) => {
+    setError(null);
+
+    try {
+      const response = await fetch("/api/users/me/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update profile");
+      }
+
+      const updatedProfile = await response.json();
+      setProfile(updatedProfile);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Update failed";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      profile,
+      isAuthenticated,
+      isLoading,
+      error,
+      login,
+      signup,
+      logout,
+      refreshUser,
+      refreshProfile,
+      updateProfile,
+      clearError,
+    }),
+    [
+      user,
+      profile,
+      isAuthenticated,
+      isLoading,
+      error,
+      login,
+      signup,
+      logout,
+      refreshUser,
+      refreshProfile,
+      updateProfile,
+      clearError,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+// ============================================
+// HOOK
+// ============================================
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }

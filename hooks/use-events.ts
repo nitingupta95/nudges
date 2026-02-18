@@ -20,7 +20,7 @@ export function useEvents() {
     try {
       const params = new URLSearchParams(filters as Record<string, string>);
       const response = await fetch(`/api/events?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error("Failed to fetch events");

@@ -140,13 +140,40 @@ export function verifyToken(token: string): TokenPayload | null {
 
 /**
  * Get current user from request
- * Extracts token from Authorization header
+ * Extracts token from Authorization header or cookies
  */
 export async function getCurrentUser(req: Request): Promise<AuthUser | null> {
   try {
-    const authHeader = req.headers.get("authorization");
+    let token: string | null = null;
 
-    if (!authHeader) {
+    // Try Authorization header first
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+    }
+
+    // Try cookies if no Authorization header
+    if (!token) {
+      try {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        const authCookie = cookieStore.get("auth_token");
+        if (authCookie?.value) {
+          token = decodeURIComponent(authCookie.value);
+        }
+      } catch {
+        // Fallback to manual cookie parsing
+        const cookieHeader = req.headers.get("cookie");
+        if (cookieHeader) {
+          const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
+          if (tokenMatch) {
+            token = decodeURIComponent(tokenMatch[1]);
+          }
+        }
+      }
+    }
+
+    if (!token) {
       // Development mode fallback
       if (process.env.NODE_ENV === "development") {
         return getDevUser();
@@ -154,29 +181,22 @@ export async function getCurrentUser(req: Request): Promise<AuthUser | null> {
       return null;
     }
 
-    // Handle Bearer token
-    if (authHeader.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      const payload = verifyToken(token);
-
-      if (!payload) {
-        return null;
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-        },
-      });
-
-      return user;
+    const payload = verifyToken(token);
+    if (!payload) {
+      return null;
     }
 
-    return null;
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    return user;
   } catch (error) {
     console.error("Get current user error:", error);
     return null;
@@ -194,7 +214,10 @@ export async function requireAuth(req: Request): Promise<AuthUser> {
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     const authCookie = cookieStore.get("auth_token");
-    token = authCookie?.value || null;
+    if (authCookie?.value) {
+      // Decode URL-encoded characters (base64 tokens may have +, /, =)
+      token = decodeURIComponent(authCookie.value);
+    }
     console.log("Token from Next.js cookies:", token ? "EXISTS" : "MISSING");
   } catch (error) {
     console.log("Failed to use Next.js cookies, falling back to manual parsing");
@@ -202,13 +225,16 @@ export async function requireAuth(req: Request): Promise<AuthUser> {
     // Fallback: Manual cookie parsing
     const cookieHeader = req.headers.get("cookie");
     if (cookieHeader) {
-      const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
+      const cookiesMap = cookieHeader.split(";").reduce((acc, cookie) => {
         const [key, value] = cookie.trim().split("=");
         acc[key] = value;
         return acc;
       }, {} as Record<string, string>);
 
-      token = cookies.auth_token || null;
+      if (cookiesMap.auth_token) {
+        // Decode URL-encoded characters
+        token = decodeURIComponent(cookiesMap.auth_token);
+      }
       console.log("Token from manual parsing:", token ? "EXISTS" : "MISSING");
     }
   }
