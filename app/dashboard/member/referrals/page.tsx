@@ -2,6 +2,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton"; 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { fetchReferrals } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { format, parseISO } from "date-fns";
@@ -11,11 +18,16 @@ import {
   ChevronUp,
   ExternalLink,
   Users,
+  Upload,
+  FileText,
+  CheckCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { useApi } from "@/hooks/use-api";
 import { PageLayout } from "@/components/layout/page-layout";
 import { ReferralStatusBadge } from "@/components/referrals/referral-staus";
+import { ResumeUpload } from "@/components/resume";
+import { toast } from "sonner";
 
 export default function Referrals() {
   const { data: referrals, loading, error, refetch } = useApi(
@@ -23,6 +35,33 @@ export default function Referrals() {
     []
   );
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
+  const [selectedReferral, setSelectedReferral] = useState<{
+    id: string;
+    jobTitle: string;
+    candidateName: string;
+    hasResume?: boolean;
+  } | null>(null);
+  const [uploadedReferrals, setUploadedReferrals] = useState<Set<string>>(new Set());
+
+  const handleOpenResumeUpload = (ref: {
+    id: string;
+    jobTitle: string;
+    candidateName: string;
+    hasResume?: boolean;
+  }) => {
+    setSelectedReferral(ref);
+    setResumeDialogOpen(true);
+  };
+
+  const handleResumeUploadComplete = () => {
+    if (selectedReferral) {
+      setUploadedReferrals(prev => new Set(prev).add(selectedReferral.id));
+    }
+    toast.success("Resume uploaded and analyzed successfully!");
+    setResumeDialogOpen(false);
+    refetch(); // Refresh the list to show updated data
+  };
 
   return (
     <PageLayout>
@@ -146,6 +185,29 @@ export default function Referrals() {
                             {t("referrals.viewJob")}
                           </Button>
                         </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => handleOpenResumeUpload({
+                            id: ref.id,
+                            jobTitle: ref.jobTitle || "Job",
+                            candidateName: ref.candidateName || "Candidate",
+                            hasResume: (ref as unknown as { hasResume?: boolean }).hasResume,
+                          })}
+                        >
+                          {uploadedReferrals.has(ref.id) || (ref as unknown as { hasResume?: boolean }).hasResume ? (
+                            <>
+                              <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                              Resume Uploaded
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-3.5 w-3.5" />
+                              Upload Resume
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -155,6 +217,33 @@ export default function Referrals() {
           </div>
         )}
       </div>
+
+      {/* Resume Upload Dialog */}
+      <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Upload Resume
+            </DialogTitle>
+            <DialogDescription>
+              {selectedReferral && (
+                <>
+                  Upload resume for {selectedReferral.candidateName} - {selectedReferral.jobTitle}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReferral && (
+            <ResumeUpload
+              referralId={selectedReferral.id}
+              jobTitle={selectedReferral.jobTitle}
+              existingResume={selectedReferral.hasResume || uploadedReferrals.has(selectedReferral.id)}
+              onUploadComplete={handleResumeUploadComplete}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
