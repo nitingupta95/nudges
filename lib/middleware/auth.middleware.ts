@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { verifyToken, AuthUser, TokenPayload } from '../auth';
 import { ApiError } from './error-handler.middleware';
 
@@ -42,13 +43,27 @@ export async function extractAuth(req: Request): Promise<AuthUser | null> {
     return payload ? tokenToAuthUser(payload) : null;
   }
 
-  // Try cookie-based auth
-  const cookieHeader = req.headers.get('cookie');
-  if (cookieHeader) {
-    const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
-    if (tokenMatch) {
-      const payload = verifyToken(tokenMatch[1]);
+  // Try Next.js cookies API (most reliable in App Router)
+  try {
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get('auth_token');
+    if (authCookie?.value) {
+      // Decode URL-encoded characters (base64 tokens may have +, /, =)
+      const token = decodeURIComponent(authCookie.value);
+      const payload = verifyToken(token);
       return payload ? tokenToAuthUser(payload) : null;
+    }
+  } catch {
+    // Fallback to manual cookie parsing if Next.js cookies() fails
+    const cookieHeader = req.headers.get('Cookie');
+    if (cookieHeader) {
+      const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
+      if (tokenMatch) {
+        // Decode URL-encoded characters
+        const token = decodeURIComponent(tokenMatch[1]);
+        const payload = verifyToken(token);
+        return payload ? tokenToAuthUser(payload) : null;
+      }
     }
   }
 

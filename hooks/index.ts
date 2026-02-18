@@ -3,3 +3,7 @@ export { useEvents } from "./use-events";
 export { useJobs } from "./use-jobs";
 export { useUser } from "./use-user";
 export { useReferrals } from "./use-referrals";
+export { useNudges } from "./use-nudges";
+export { useMessages } from "./use-messages";
+export { useMatching } from "./use-matching";
+export { useApi } from "./use-api";

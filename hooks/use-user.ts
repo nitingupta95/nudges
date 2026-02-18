@@ -16,7 +16,7 @@ export function useUser() {
     setError(null);
     try {
       const response = await fetch("/api/users/me", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error("Failed to fetch user");
