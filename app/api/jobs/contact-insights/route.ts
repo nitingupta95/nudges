@@ -1,33 +1,70 @@
-import { NextResponse } from "next/server";
-import { extractContactInsights } from "@/services/ai/ai.service";
+/**
+ * @swagger
+ * /api/jobs/contact-insights:
+ *   post:
+ *     summary: Get contact insights for a job posting
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - jobTitle
+ *               - jobDescription
+ *             properties:
+ *               jobTitle:
+ *                 type: string
+ *               jobDescription:
+ *                 type: string
+ *               company:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Contact insights
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 insights:
+ *                   type: object
+ *                   properties:
+ *                     roles:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     departments:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     description:
+ *                       type: string
+ *                     source:
+ *                       type: string
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+
+import { withAuth } from "@/lib/middleware/auth.middleware";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit.middleware";
+import { getContactInsightsController } from "@/controllers/user.controller";
 
 /**
  * POST: Extract contact insights from a job posting
- * Returns who should be reached out to based on the job description
  */
 export async function POST(req: Request) {
-  try {
-    const { jobTitle, jobDescription, company } = await req.json();
-
-    if (!jobTitle || !jobDescription) {
-      return NextResponse.json(
-        { error: "Missing required fields: jobTitle and jobDescription" },
-        { status: 400 }
-      );
-    }
-
-    const insights = await extractContactInsights(
-      jobTitle,
-      jobDescription,
-      company
+  return withAuth(req, async (request, user) => {
+    return withRateLimit(
+      request,
+      RATE_LIMITS.AI,
+      () => getContactInsightsController(request),
+      user.id
     );
-
-    return NextResponse.json({ insights });
-  } catch (error) {
-    console.error("Error extracting contact insights:", error);
-    return NextResponse.json(
-      { error: "Failed to extract contact insights" },
-      { status: 500 }
-    );
-  }
+  });
 }

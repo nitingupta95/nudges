@@ -1,81 +1,105 @@
+/**
+ * @swagger
+ * /api/jobs:
+ *   get:
+ *     summary: List all jobs
+ *     tags: [Jobs]
+ *     parameters:
+ *       - in: query
+ *         name: domain
+ *         schema:
+ *           type: string
+ *         description: Filter by domain
+ *       - in: query
+ *         name: experienceLevel
+ *         schema:
+ *           type: string
+ *           enum: [INTERN, ENTRY, MID, SENIOR, STAFF, PRINCIPAL, EXECUTIVE]
+ *         description: Filter by experience level
+ *       - in: query
+ *         name: skills
+ *         schema:
+ *           type: string
+ *         description: Comma-separated skills
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Results per page
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *     responses:
+ *       200:
+ *         description: List of jobs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 jobs:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Job'
+ *                 total:
+ *                   type: integer
+ *   post:
+ *     summary: Create a new job
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateJobInput'
+ *     responses:
+ *       201:
+ *         description: Job created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 job:
+ *                   $ref: '#/components/schemas/Job'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+
 import { NextResponse } from "next/server";
-import { parseJobDescription } from "@/services/job/job.parser";
-import { createJob, listJobs } from "@/services/job/job.service";
+import { withAuth } from "@/lib/middleware/auth.middleware";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit.middleware";
+import { listJobsController, createJobController } from "@/controllers/job.controller";
 
 /**
  * GET: List all jobs with optional filters
  */
 export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-
-    const filters = {
-      domain: searchParams.get("domain") || undefined,
-      skills: searchParams.get("skills")?.split(",").filter(Boolean),
-      isActive: searchParams.get("isActive") !== "false",
-      limit: parseInt(searchParams.get("limit") || "50"),
-      offset: parseInt(searchParams.get("offset") || "0"),
-    };
-
-    const result = await listJobs(filters);
-
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error("Error listing jobs:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch jobs" },
-      { status: 500 }
-    );
-  }
+  return withRateLimit(
+    req,
+    RATE_LIMITS.READ,
+    () => listJobsController(req)
+  );
 }
 
 /**
  * POST: Create a new job
  */
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-
-    const {
-      title,
-      company,
-      description,
-      location,
-      salaryMin,
-      salaryMax,
-      isRemote,
-      closingDate,
-      createdById,
-    } = body;
-
-    if (!title || !company || !description || !createdById) {
-      return NextResponse.json(
-        { error: "Title, company, description, and createdById are required" },
-        { status: 400 }
-      );
-    }
-
-    // Parse job description to generate tags
-    const parsedTags = parseJobDescription(title, description);
-
-    const job = await createJob({
-      title,
-      company,
-      description,
-      location,
-      salaryMin,
-      salaryMax,
-      isRemote,
-      closingDate: closingDate ? new Date(closingDate) : undefined,
-      createdById,
-    });
-
-    return NextResponse.json({ job }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating job:", error);
-    return NextResponse.json(
-      { error: "Failed to create job" },
-      { status: 500 }
+  return withAuth(req, async (request, user) => {
+    return withRateLimit(
+      request,
+      RATE_LIMITS.WRITE,
+      () => createJobController(request, user),
+      user.id
     );
-  }
+  });
 }

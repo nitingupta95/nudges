@@ -5,6 +5,32 @@ import { sanitizeAuthInput } from "@/lib/auth";
 /**
  * POST: Signup a new user
  */
+/**
+ * @swagger
+ * /api/auth/signup:
+ *   post:
+ *     summary: User signup
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Signup successful
+ *       400:
+ *         description: Invalid input
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();

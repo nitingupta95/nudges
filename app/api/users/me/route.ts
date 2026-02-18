@@ -1,31 +1,43 @@
-import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
-import { getUserProfile } from "@/services/user/user.service";
+/**
+ * @swagger
+ * /api/users/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 profile:
+ *                   $ref: '#/components/schemas/MemberProfile'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+
+import { withAuth } from "@/lib/middleware/auth.middleware";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit.middleware";
+import { getCurrentUserController } from "@/controllers/user.controller";
 
 /**
  * GET: Fetch the current user's profile
  */
 export async function GET(req: Request) {
-  try {
-    console.log("=== /api/users/me called ===");
-    console.log("Cookie header:", req.headers.get("cookie"));
-
-    const authUser = await requireAuth(req);
-    console.log("Auth successful for user:", authUser.id);
-
-    const userProfile = await getUserProfile(authUser.id);
-
-    if (!userProfile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Return user data directly (not wrapped in { user: ... })
-    return NextResponse.json(userProfile);
-  } catch (error) {
-    console.error("Error fetching user profile:", error);
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    return NextResponse.json({ error: "Failed to fetch user profile" }, { status: 500 });
-  }
+  return withAuth(req, async (request, user) => {
+    return withRateLimit(
+      request,
+      RATE_LIMITS.READ,
+      () => getCurrentUserController(user),
+      user.id
+    );
+  });
 }

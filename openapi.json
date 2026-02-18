@@ -1,0 +1,13 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Nudges API",
+    "version": "1.0.0",
+    "description": "Auto-generated OpenAPI spec for Nudges API."
+  },
+  "servers": [
+    { "url": "/api" }
+  ],
+  "paths": {},
+  "components": {}
+}
