@@ -55,11 +55,34 @@ export async function listReferralsController(
 
     const referrals = await listReferrals(effectiveUserId || user.id, {
       status: filters.status as any,
+      jobId: filters.jobId,
       limit: filters.limit,
       offset: filters.offset,
+      role: user.role,
     });
 
-    return successResponse({ referrals });
+    // Transform referrals for API response
+    const transformedReferrals = referrals.map((ref) => ({
+      id: ref.id,
+      candidateName: ref.candidateName,
+      candidateEmail: ref.candidateEmail,
+      candidatePhone: ref.candidatePhone,
+      candidateLinkedIn: ref.candidateLinkedIn,
+      resumeUrl: ref.candidateResume,
+      note: ref.referralNote,
+      relation: ref.relationType,
+      status: ref.status,
+      reviewNotes: ref.reviewNotes,
+      jobId: ref.jobId,
+      jobTitle: ref.job?.title,
+      companyName: ref.job?.company,
+      referrerName: ref.referrer?.name || ref.referrer?.email,
+      referrerId: ref.referrerId,
+      createdAt: ref.createdAt,
+      updatedAt: ref.updatedAt,
+    }));
+
+    return successResponse({ referrals: transformedReferrals });
   });
 }
 

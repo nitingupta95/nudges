@@ -61,6 +61,99 @@ const WEIGHTS = {
 } as const;
 
 // ============================================
+// Semantic Skill Groups (for skill taxonomy matching)
+// ============================================
+
+const SKILL_GROUPS: Record<string, string[]> = {
+  frontend: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'gatsby', 'javascript', 'typescript', 'html', 'css', 'sass', 'tailwind', 'webpack', 'vite'],
+  backend: ['nodejs', 'express', 'fastify', 'python', 'django', 'flask', 'fastapi', 'golang', 'java', 'spring', 'ruby', 'rails', 'rust', 'php', 'laravel', 'dotnet', 'csharp'],
+  database: ['postgresql', 'postgres', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'cassandra', 'dynamodb', 'sqlite', 'oracle', 'sql', 'nosql', 'prisma', 'sequelize'],
+  cloud: ['aws', 'gcp', 'azure', 'kubernetes', 'docker', 'terraform', 'ansible', 'cloudflare', 'vercel', 'netlify', 'heroku'],
+  devops: ['ci/cd', 'jenkins', 'github actions', 'gitlab ci', 'circleci', 'argocd', 'prometheus', 'grafana', 'datadog', 'newrelic'],
+  mobile: ['react native', 'flutter', 'swift', 'kotlin', 'ios', 'android', 'expo', 'xamarin'],
+  ml: ['tensorflow', 'pytorch', 'scikit-learn', 'keras', 'pandas', 'numpy', 'opencv', 'nlp', 'machine learning', 'deep learning', 'ai'],
+  data: ['spark', 'hadoop', 'airflow', 'kafka', 'snowflake', 'bigquery', 'databricks', 'dbt', 'etl', 'data engineering', 'data science'],
+};
+
+// Skill name aliases for normalization
+const SKILL_ALIASES: Record<string, string> = {
+  'js': 'javascript',
+  'ts': 'typescript',
+  'react.js': 'react',
+  'node.js': 'nodejs',
+  'node': 'nodejs',
+  'postgres': 'postgresql',
+  'mongo': 'mongodb',
+  'k8s': 'kubernetes',
+  'gcp': 'google cloud',
+  'aws': 'amazon web services',
+  'py': 'python',
+  'rb': 'ruby',
+  'c#': 'csharp',
+  '.net': 'dotnet',
+};
+
+/**
+ * Normalize a skill name using aliases
+ */
+function normalizeSkill(skill: string): string {
+  const normalized = skill.toLowerCase().trim();
+  return SKILL_ALIASES[normalized] || normalized;
+}
+
+/**
+ * Check if two skills are semantically related (in the same skill group)
+ */
+function hasSemanticMatch(skill: string, memberSkills: string[]): boolean {
+  const normalizedSkill = normalizeSkill(skill);
+  const normalizedMemberSkills = memberSkills.map(s => normalizeSkill(s));
+  
+  for (const [, skills] of Object.entries(SKILL_GROUPS)) {
+    if (skills.includes(normalizedSkill) && skills.some(s => normalizedMemberSkills.includes(s))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Calculate skill overlap with semantic matching
+ */
+function calculateSkillOverlapWithSemantic(
+  memberSkills: string[],
+  jobSkills: string[]
+): { score: number; matches: string[]; semanticMatches: string[] } {
+  if (jobSkills.length === 0) return { score: 50, matches: [], semanticMatches: [] };
+  
+  const normalizedMemberSkills = memberSkills.map(s => normalizeSkill(s));
+  const normalizedJobSkills = jobSkills.map(s => normalizeSkill(s));
+  
+  // Direct matches
+  const directMatches = normalizedJobSkills.filter(skill => normalizedMemberSkills.includes(skill));
+  
+  // Semantic matches (skills not directly matched but in same group)
+  const unmatchedJobSkills = normalizedJobSkills.filter(skill => !directMatches.includes(skill));
+  const semanticMatches = unmatchedJobSkills.filter(skill => hasSemanticMatch(skill, normalizedMemberSkills));
+  
+  // Calculate score: direct matches = 1.0, semantic matches = 0.7
+  const matchScore = directMatches.length + (semanticMatches.length * 0.7);
+  const maxPossible = jobSkills.length;
+  
+  // Raw score based on coverage
+  let score = (matchScore / maxPossible) * 100;
+  
+  // Bonus for having extra relevant skills (up to 10%)
+  const extraSkillBonus = Math.min(10, (memberSkills.length - directMatches.length) * 2);
+  score = Math.min(100, score + extraSkillBonus);
+  
+  return { 
+    score, 
+    matches: directMatches,
+    semanticMatches 
+  };
+}
+
+// ============================================
 // Helper Functions
 // ============================================
 
@@ -175,8 +268,8 @@ export async function calculateMatchScore(
   const jobDomains = job.jobTag?.domains || [];
   const jobIndustry = job.industry || job.jobTag?.industry;
 
-  // Calculate individual scores
-  const skillResult = calculateOverlap(memberProfile.skills, jobSkills);
+  // Calculate individual scores - using semantic skill matching
+  const skillResult = calculateSkillOverlapWithSemantic(memberProfile.skills, jobSkills);
   const companyResult = calculateOverlap(
     memberProfile.pastCompanies,
     [job.company] // Check if member worked at this company
@@ -238,12 +331,20 @@ export async function calculateMatchScore(
     });
   }
 
-  if (skillResult.matches.length > 0) {
+  if (skillResult.matches.length > 0 || skillResult.semanticMatches.length > 0) {
+    let explanation = '';
+    if (skillResult.matches.length > 0) {
+      explanation = `Matching skills: ${skillResult.matches.slice(0, 5).join(', ')}`;
+    }
+    if (skillResult.semanticMatches.length > 0) {
+      const semanticNote = skillResult.matches.length > 0 ? '. Related: ' : 'Related skills: ';
+      explanation += semanticNote + skillResult.semanticMatches.slice(0, 3).join(', ');
+    }
     reasons.push({
       type: 'skill_match',
       weight: WEIGHTS.skillOverlap,
       score: skillResult.score,
-      explanation: `Matching skills: ${skillResult.matches.slice(0, 5).join(', ')}`,
+      explanation,
     });
   }
 

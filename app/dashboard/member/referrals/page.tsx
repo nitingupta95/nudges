@@ -88,7 +88,7 @@ export default function Referrals() {
                           <Building2 className="h-3.5 w-3.5" />
                           {ref.jobTitle} at {ref.companyName}
                         </span>
-                        <span className="capitalize">{ref.relation}</span>
+                        <span className="capitalize">{ref.relationType}</span>
                       </div>
                       {ref.note && (
                         <p className="mt-2 text-sm text-muted-foreground line-clamp-2">

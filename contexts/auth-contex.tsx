@@ -83,8 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
-        return data.user;
+        // API returns user directly, not wrapped in { user: ... }
+        const userData = data.user || data;
+        setUser(userData);
+        return userData;
       } else if (response.status === 401) {
         setUser(null);
         setProfile(null);

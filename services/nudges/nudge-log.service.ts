@@ -121,11 +121,49 @@ export async function logNudgeInteraction(input: LogInteractionInput): Promise<s
  * Log interaction by member and job (finds or creates nudge log)
  */
 export async function logInteractionByContext(
-  memberId: string,
+  memberOrUserId: string,
   jobId: string,
   action: InteractionAction,
   metadata?: Record<string, unknown>
 ): Promise<string> {
+  // Resolve the actual member ID
+  // First, check if it's a valid MemberProfile ID
+  let memberProfile = await prisma.memberProfile.findUnique({
+    where: { id: memberOrUserId },
+    select: { id: true },
+  });
+
+  // If not found, try to find by userId (in case user.id was passed)
+  if (!memberProfile) {
+    memberProfile = await prisma.memberProfile.findFirst({
+      where: { userId: memberOrUserId },
+      select: { id: true },
+    });
+  }
+
+  // If still no member profile, create one
+  if (!memberProfile) {
+    const user = await prisma.user.findUnique({
+      where: { id: memberOrUserId },
+      select: { id: true, name: true, email: true },
+    });
+
+    if (!user) {
+      // Cannot log interaction without a valid user/member
+      console.warn(`[NudgeLog] Cannot log interaction: no user found for ID ${memberOrUserId}`);
+      return 'skipped';
+    }
+
+    memberProfile = await prisma.memberProfile.create({
+      data: {
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+  }
+
+  const memberId = memberProfile.id;
+
   // Find the most recent nudge log for this member/job
   let nudgeLog = await prisma.nudgeLog.findFirst({
     where: { memberId, jobId },

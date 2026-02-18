@@ -28,6 +28,7 @@ The system works **without access to member connection data**, using only:
 | 7 | [Metrics Framework](./07-metrics-framework.md) | KPIs, tracking, dashboards, and A/B testing |
 | 8 | [Future Roadmap](./08-future-roadmap.md) | Advanced extensions and enhancement plans |
 | 9 | [Recruiter Guide](./09-recruiter-guide.md) | Recruiter features, job management, referral tracking |
+| 10 | [Implementation Status](./10-implementation-status.md) | **Audit report: gaps, recommendations, action items** |
 
 ---
 

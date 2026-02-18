@@ -27,8 +27,8 @@
 
 import { NextResponse } from "next/server";
 import { parseJobDescriptionAI } from "@/services/ai/ai.service";
-import { cachedAICall } from "@/services/ai/ai-cache.service";
-import { checkBudget } from "@/services/ai/ai-budget.service";
+import { cachedAICall } from "@/services/ai/ai.cache.service";
+import { checkBudget } from "@/services/ai/ai.budget.service";
 import crypto from "crypto";
 
 export async function POST(req: Request) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { t } from "@/lib/i18n";
 import { messageTemplates } from "@/mock/data";
 import type { Job } from "@/types";
-import { Copy, ExternalLink, CheckCircle } from "lucide-react";
+import { Copy, ExternalLink, CheckCircle, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface ReferralComposerProps {
@@ -35,6 +35,8 @@ export function ReferralComposer({
     messageTemplates[0].id
   );
   const [contacted, setContacted] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [isAIMessage, setIsAIMessage] = useState(false);
 
 
   const template = messageTemplates.find((t) => t.id === selectedTemplate)!;
@@ -51,8 +53,45 @@ export function ReferralComposer({
 
   const handleTemplateChange = (id: string) => {
     setSelectedTemplate(id);
+    setIsAIMessage(false);
     const tmpl = messageTemplates.find((t) => t.id === id)!;
     setMessage(fillTemplate(tmpl.body));
+  };
+
+  const generateAIMessage = async () => {
+    setGeneratingAI(true);
+    try {
+      const companyName = typeof job.company === 'string' ? job.company : job.company.name;
+      const response = await fetch('/api/ai/generate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          jobTitle: job.title,
+          company: companyName,
+          skills: job.skills || [],
+          matchReason: 'You might know someone perfect for this role',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate message');
+      }
+
+      const data = await response.json();
+      if (data.success && data.data?.body) {
+        setMessage(data.data.body);
+        setIsAIMessage(true);
+        toast.success('AI message generated!');
+      } else {
+        throw new Error('Invalid response');
+      }
+    } catch (error) {
+      console.error('AI message generation failed:', error);
+      toast.error('Failed to generate AI message. Try again or use a template.');
+    } finally {
+      setGeneratingAI(false);
+    }
   };
 
   const copyToClipboard = async () => {
@@ -84,7 +123,7 @@ export function ReferralComposer({
               <button
                 key={tmpl.id}
                 onClick={() => handleTemplateChange(tmpl.id)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${selectedTemplate === tmpl.id
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${selectedTemplate === tmpl.id && !isAIMessage
                     ? "border-accent bg-accent/10 text-accent-foreground"
                     : "border-border text-muted-foreground hover:border-accent/50"
                   }`}
@@ -92,6 +131,22 @@ export function ReferralComposer({
                 {tmpl.label}
               </button>
             ))}
+            <button
+              onClick={generateAIMessage}
+              disabled={generatingAI}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${
+                isAIMessage
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-primary/50 text-primary hover:border-primary hover:bg-primary/5"
+              }`}
+            >
+              {generatingAI ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
+              AI Generate
+            </button>
           </div>
         </div>
 

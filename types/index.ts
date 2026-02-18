@@ -5,6 +5,16 @@ export interface Company {
   type?: string;
 }
 
+export interface JobTags {
+  skills?: string[];
+  domains?: string[];
+  keywords?: string[];
+  techStack?: string[];
+  softSkills?: string[];
+  seniorityTerms?: string[];
+  experienceLevel?: string;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -17,9 +27,21 @@ export interface Job {
   requirements?: string[];
   skills?: string[];
   domains?: string[];
-  experienceLevel?: "junior" | "mid" | "senior";
+  experienceLevel?: "INTERN" | "ENTRY" | "MID" | "SENIOR" | "STAFF" | "PRINCIPAL" | "EXECUTIVE" | "junior" | "mid" | "senior";
   domain?: string;
   aiSummary?: JobSummary;
+  // Additional fields from database
+  isRemote?: boolean;
+  isActive?: boolean;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  viewCount?: number;
+  referralCount?: number;
+  createdById?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  tags?: JobTags;
 }
 
 export interface JobSummary {
@@ -34,7 +56,7 @@ export interface MemberProfile {
   skills: string[];
   pastCompanies: string[];
   domains: string[];
-  experienceLevel: "junior" | "mid" | "senior";
+  experienceLevel: string;
   yearsOfExperience: number;
   currentCompany?: string;
   currentTitle?: string;
@@ -42,6 +64,7 @@ export interface MemberProfile {
   preferredDomains: string[];
   preferredRoles: string[];
   isOpenToRefer: boolean;
+  profileCompleteness?: number;
 }
 
 export interface ReferralNudgeResponse {
@@ -57,10 +80,17 @@ export type ReferralStatus =
   | "rejected";
 
 export type RelationType =
-  | "friend"
-  | "ex-colleague"
-  | "relative"
-  | "other";
+  | "EX_COLLEAGUE"
+  | "COLLEGE_ALUMNI"
+  | "FRIEND"
+  | "FAMILY"
+  | "BOOTCAMP_CONNECTION"
+  | "LINKEDIN_CONNECTION"
+  | "RELATIVE"
+  | "CLASSMATE"
+  | "MENTOR"
+  | "MENTEE"
+  | "OTHER";
 
 export interface ReferralSubmission {
   id: string;
@@ -69,7 +99,7 @@ export interface ReferralSubmission {
   companyName?: string;
   candidateName?: string;
   candidateProfileUrl?: string;
-  relation: RelationType;
+  relationType: RelationType;
   note?: string;
   status: ReferralStatus;
   createdAt: string;
@@ -107,6 +137,9 @@ export interface JobFilters {
   closingSoon?: boolean;
   goodFit?: boolean;
   search?: string;
+  skills?: string[];
+  limit?: number;
+  offset?: number;
 }
 
 export interface MessageTemplate {

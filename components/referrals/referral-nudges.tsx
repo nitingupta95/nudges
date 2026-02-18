@@ -30,10 +30,10 @@ export function ReferralNudgePanel({
   
   const [nudgeData, setNudgeData] = useState<{
     nudges: string[];
-    explain: string;
-    matchScore: number;
-    matchTier: string;
-    reasons: Array<{ type: string; explanation: string }>;
+    explain?: string;
+    matchScore?: number;
+    matchTier?: string;
+    reasons?: Array<{ type: string; explanation: string }>;
   } | null>(null);
   const [personalizedNudge, setPersonalizedNudge] = useState<{
     id: string;
@@ -152,7 +152,7 @@ export function ReferralNudgePanel({
             {t("nudges.title")}
           </h3>
           {nudgeData?.matchScore && (
-            <Badge variant="outline" className={getTierColor(nudgeData.matchTier)}>
+            <Badge variant="outline" className={getTierColor(nudgeData.matchTier || "LOW")}>
               {nudgeData.matchScore}% match
             </Badge>
           )}

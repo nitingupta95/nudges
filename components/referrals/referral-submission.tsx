@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { t } from "@/lib/i18n";
-import { submitReferral } from "@/lib/api";
+import { submitReferral, trackEvent } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-contex";
 import type { Job, ReferralSubmission, RelationType } from "@/types";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ export function ReferralSubmissionForm({
   job,
   onSuccess,
 }: ReferralSubmissionFormProps) {
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profileUrl, setProfileUrl] = useState("");
@@ -45,6 +47,26 @@ export function ReferralSubmissionForm({
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState(false);
+  const hasTrackedOpen = useRef(false);
+
+  // Track REFERRAL_STARTED when dialog opens
+  useEffect(() => {
+    if (open && user && !hasTrackedOpen.current) {
+      hasTrackedOpen.current = true;
+      trackEvent({
+        type: "REFERRAL_STARTED",
+        userId: user.id,
+        jobId: job.id,
+        metadata: {
+          source: "referral_submission_form",
+          jobTitle: job.title,
+        },
+      });
+    }
+    if (!open) {
+      hasTrackedOpen.current = false;
+    }
+  }, [open, user, job]);
 
   const resetForm = () => {
     setName("");
@@ -83,11 +105,27 @@ export function ReferralSubmissionForm({
         candidateName: name.trim(),
         candidateEmail: email.trim(), // Added email
         candidateProfileUrl: profileUrl.trim() || undefined,
-        relation: relation as RelationType,
+        relationType: relation as RelationType,
         note: note.trim() || undefined,
       };
       // @ts-ignore - API signature mismatch in local vs updated lib/api.ts
       const referral = await submitReferral(payload);
+      
+      // Track successful referral submission
+      if (user) {
+        trackEvent({
+          type: "REFERRAL_SUBMITTED",
+          userId: user.id,
+          jobId: job.id,
+          referralId: referral.id,
+          metadata: {
+            source: "referral_submission_form",
+            jobTitle: job.title,
+            relationType: relation,
+          },
+        });
+      }
+      
       onSuccess(referral);
       toast.success(t("submit.success"));
       resetForm();
@@ -166,10 +204,17 @@ export function ReferralSubmissionForm({
                 <SelectValue placeholder="Select…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="friend">Friend</SelectItem>
-                <SelectItem value="ex-colleague">Ex-colleague</SelectItem>
-                <SelectItem value="relative">Relative</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="FRIEND">Friend</SelectItem>
+                <SelectItem value="EX_COLLEAGUE">Ex-colleague</SelectItem>
+                <SelectItem value="COLLEGE_ALUMNI">College Alumni</SelectItem>
+                <SelectItem value="FAMILY">Family</SelectItem>
+                <SelectItem value="RELATIVE">Relative</SelectItem>
+                <SelectItem value="BOOTCAMP_CONNECTION">Bootcamp Connection</SelectItem>
+                <SelectItem value="LINKEDIN_CONNECTION">LinkedIn Connection</SelectItem>
+                <SelectItem value="CLASSMATE">Classmate</SelectItem>
+                <SelectItem value="MENTOR">Mentor</SelectItem>
+                <SelectItem value="MENTEE">Mentee</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>

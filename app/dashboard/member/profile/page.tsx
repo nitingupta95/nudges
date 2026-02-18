@@ -41,26 +41,24 @@ const domainOptions = [
 ];
 
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
+  const { user, profile, refreshUser, refreshProfile } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Form state
-  const [skills, setSkills] = useState<string[]>(user?.memberProfile?.skills || []);
+  const [skills, setSkills] = useState<string[]>(profile?.skills || []);
   const [pastCompanies, setPastCompanies] = useState<string[]>(
-    user?.memberProfile?.pastCompanies || []
+    profile?.pastCompanies || []
   );
-  const [domains, setDomains] = useState<string[]>(user?.memberProfile?.domains || []);
+  const [domains, setDomains] = useState<string[]>(profile?.domains || []);
   const [experienceLevel, setExperienceLevel] = useState<string>(
-    user?.memberProfile?.experienceLevel || "mid"
+    profile?.experienceLevel || "mid"
   );
   const [yearsOfExperience, setYearsOfExperience] = useState<number>(
-    user?.memberProfile?.yearsOfExperience || 0
+    profile?.yearsOfExperience || 0
   );
-  const [preferences, setPreferences] = useState<string[]>(
-    user?.memberProfile?.preferences || []
-  );
+  const [preferences, setPreferences] = useState<string[]>([]);
 
   const togglePref = (key: string) => {
     setPreferences((prev) =>
@@ -76,12 +74,12 @@ export default function Profile() {
 
   const handleCancel = () => {
     // Reset form to original values
-    setSkills(user?.memberProfile?.skills || []);
-    setPastCompanies(user?.memberProfile?.pastCompanies || []);
-    setDomains(user?.memberProfile?.domains || []);
-    setExperienceLevel(user?.memberProfile?.experienceLevel || "mid");
-    setYearsOfExperience(user?.memberProfile?.yearsOfExperience || 0);
-    setPreferences(user?.memberProfile?.preferences || []);
+    setSkills(profile?.skills || []);
+    setPastCompanies(profile?.pastCompanies || []);
+    setDomains(profile?.domains || []);
+    setExperienceLevel(profile?.experienceLevel || "mid");
+    setYearsOfExperience(profile?.yearsOfExperience || 0);
+    setPreferences([]);
     setIsEditing(false);
   };
 
@@ -188,7 +186,7 @@ export default function Profile() {
               />
             ) : (
               <div className="flex flex-wrap gap-2">
-                {user?.memberProfile?.skills?.map((skill) => (
+                {profile?.skills?.map((skill) => (
                   <Badge key={skill} variant="secondary">
                     {skill}
                   </Badge>
@@ -215,7 +213,7 @@ export default function Profile() {
               />
             ) : (
               <div className="flex flex-wrap gap-2">
-                {user?.memberProfile?.pastCompanies?.map((company) => (
+                {profile?.pastCompanies?.map((company) => (
                   <Badge key={company} variant="secondary">
                     {company}
                   </Badge>
@@ -248,7 +246,7 @@ export default function Profile() {
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {user?.memberProfile?.domains?.map((domain) => (
+                {profile?.domains?.map((domain) => (
                   <Badge key={domain} variant="secondary">
                     {domain}
                   </Badge>
@@ -279,7 +277,7 @@ export default function Profile() {
               </Select>
             ) : (
               <p className="text-sm text-foreground capitalize">
-                {user?.memberProfile?.experienceLevel || "Not set"}
+                {profile?.experienceLevel || "Not set"}
               </p>
             )}
           </div>
@@ -299,7 +297,7 @@ export default function Profile() {
               />
             ) : (
               <p className="text-sm text-foreground">
-                {user?.memberProfile?.yearsOfExperience || 0} years
+                {profile?.yearsOfExperience || 0} years
               </p>
             )}
           </div>
