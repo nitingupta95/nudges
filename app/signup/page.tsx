@@ -5,6 +5,13 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { fadeUp } from "@/lib/animations";
 import { useRouter } from "next/navigation";
@@ -18,6 +25,7 @@ export default function Signup() {
     name: "",
     email: "",
     password: "",
+    role: "MEMBER" as "MEMBER" | "RECRUITER",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +37,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      await signup(formData.name, formData.email, formData.password);
+      await signup(formData.name, formData.email, formData.password, formData.role);
       // Success - redirect to login page with success message
       router.push("/login?signup=success");
     } catch (err) {
@@ -121,6 +129,25 @@ export default function Signup() {
             </motion.div>
 
             <motion.div custom={4} variants={fadeUp} className="space-y-2">
+              <Label htmlFor="role" className="text-sm font-medium text-foreground/80">
+                I am a
+              </Label>
+              <Select
+                value={formData.role}
+                onValueChange={(value: "MEMBER" | "RECRUITER") => setFormData({ ...formData, role: value })}
+                disabled={loading}
+              >
+                <SelectTrigger className="h-11 bg-secondary/50 border-border/50 text-foreground focus:ring-primary/30 focus:border-primary/40 transition-colors">
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MEMBER">Member (looking to refer or get referred)</SelectItem>
+                  <SelectItem value="RECRUITER">Recruiter (posting jobs)</SelectItem>
+                </SelectContent>
+              </Select>
+            </motion.div>
+
+            <motion.div custom={5} variants={fadeUp} className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium text-foreground/80">
                 Password
               </Label>
@@ -164,7 +191,7 @@ export default function Signup() {
               </motion.p>
             )}
 
-            <motion.div custom={5} variants={fadeUp}>
+            <motion.div custom={6} variants={fadeUp}>
               <Button
                 type="submit"
                 className="w-full h-11 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200"
@@ -177,7 +204,7 @@ export default function Signup() {
           </form>
 
           <motion.div
-            custom={6}
+            custom={7}
             variants={fadeUp}
             className="flex items-center gap-2.5 rounded-xl bg-secondary/50 border border-border/30 p-3.5 text-xs text-muted-foreground"
           >
@@ -189,7 +216,7 @@ export default function Signup() {
           </motion.div>
 
           <motion.p
-            custom={7}
+            custom={8}
             variants={fadeUp}
             className="text-center text-sm text-muted-foreground"
           >

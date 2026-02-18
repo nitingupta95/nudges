@@ -36,6 +36,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const sanitizedInput = sanitizeAuthInput(body);
     const { name, email, password } = sanitizedInput;
+    // Role can be MEMBER or RECRUITER (ADMIN is protected)
+    const role = body.role === "RECRUITER" ? "RECRUITER" : "MEMBER";
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -44,7 +46,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await signupUser(name, email, password);
+    const result = await signupUser(name, email, password, role);
 
     // Create response with user data (without token)
     const response = NextResponse.json({

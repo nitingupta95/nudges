@@ -10,7 +10,7 @@ const options = {
       description: 'API documentation for Nudges',
     },
     servers: [
-      { url: '/api' },
+      { url: '/' },
     ],
     components: {
       securitySchemes: {

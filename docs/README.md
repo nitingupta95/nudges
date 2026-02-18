@@ -27,6 +27,7 @@ The system works **without access to member connection data**, using only:
 | 6 | [AI Usage](./06-ai-usage.md) | AI/ML integration, prompts, and fallback strategies |
 | 7 | [Metrics Framework](./07-metrics-framework.md) | KPIs, tracking, dashboards, and A/B testing |
 | 8 | [Future Roadmap](./08-future-roadmap.md) | Advanced extensions and enhancement plans |
+| 9 | [Recruiter Guide](./09-recruiter-guide.md) | Recruiter features, job management, referral tracking |
 
 ---
 

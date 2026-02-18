@@ -102,11 +102,13 @@ export async function loginUser(
 
 /**
  * Sign up a new user
+ * @param role - Optional role (MEMBER or RECRUITER). ADMIN cannot be self-assigned.
  */
 export async function signupUser(
     name: string,
     email: string,
-    password: string
+    password: string,
+    role?: "MEMBER" | "RECRUITER"
 ): Promise<SignupResponse> {
     // Validate required fields
     if (!name || !email || !password) {
@@ -117,6 +119,9 @@ export async function signupUser(
     if (password.length < 8) {
         throw new Error("Password must be at least 8 characters");
     }
+
+    // Validate role - only MEMBER and RECRUITER allowed via signup
+    const validRole = role === "RECRUITER" ? "RECRUITER" : "MEMBER";
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -136,6 +141,7 @@ export async function signupUser(
             name,
             email,
             password: hashedPassword,
+            role: validRole,
             memberProfile: {
                 create: {
                     skills: [],

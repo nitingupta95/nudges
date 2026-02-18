@@ -99,3 +99,4 @@ When built well, this becomes:
 | [AI Usage](./06-ai-usage.md) | AI/ML integration and models |
 | [Metrics Framework](./07-metrics-framework.md) | KPIs, tracking, and analytics |
 | [Future Roadmap](./08-future-roadmap.md) | Advanced extensions and enhancements |
+| [Recruiter Guide](./09-recruiter-guide.md) | Recruiter features, job management, referral tracking |

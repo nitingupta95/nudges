@@ -1,3 +1,7 @@
+import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/middleware/auth.middleware";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit.middleware";
+import { listJobsController, createJobController } from "@/controllers/job.controller";
 /**
  * @swagger
  * /api/jobs:
@@ -47,6 +51,24 @@
  *                     $ref: '#/components/schemas/Job'
  *                 total:
  *                   type: integer
+/**
+ * GET: List all jobs with optional filters
+ */
+export async function GET(req: Request) {
+  return withRateLimit(
+    req,
+    RATE_LIMITS.READ,
+    () => listJobsController(req)
+  );
+}
+
+/**
+ * POST: Create a new job
+ */
+/**
+ * @swagger
+ * /api/jobs:
+ *   get:
  *   post:
  *     summary: Create a new job
  *     tags: [Jobs]
@@ -72,26 +94,6 @@
  *         description: Validation error
  *       401:
  *         description: Unauthorized
- */
-
-import { NextResponse } from "next/server";
-import { withAuth } from "@/lib/middleware/auth.middleware";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit.middleware";
-import { listJobsController, createJobController } from "@/controllers/job.controller";
-
-/**
- * GET: List all jobs with optional filters
- */
-export async function GET(req: Request) {
-  return withRateLimit(
-    req,
-    RATE_LIMITS.READ,
-    () => listJobsController(req)
-  );
-}
-
-/**
- * POST: Create a new job
  */
 export async function POST(req: Request) {
   return withAuth(req, async (request, user) => {
