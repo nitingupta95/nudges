@@ -77,7 +77,7 @@ export function Header() {
           className="flex items-center gap-2 text-xl font-bold text-foreground"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-extrabold">
-            P
+            N
           </span>
           Nudges
         </Link>

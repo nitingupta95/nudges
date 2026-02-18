@@ -73,7 +73,7 @@ export default function Signup() {
               className="inline-flex items-center gap-2.5 text-xl font-bold text-foreground"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground text-sm font-extrabold shadow-lg shadow-primary/25">
-                P
+                N
               </span>
               Nudges
             </Link>
